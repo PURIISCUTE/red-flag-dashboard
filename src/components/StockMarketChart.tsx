@@ -60,39 +60,39 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
     .join(' ');
 
   return (
-    <div className="bg-[#0F131C] border border-[#22293d] p-4 mb-4 shadow-lg">
+    <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl shadow-sm">
       {/* Header and Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#1c2233]">
-        <div className="flex items-center gap-2">
-          <Activity className="h-4 w-4 text-[#FF4D4D]" />
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
+        <div className="flex items-center gap-2.5">
+          <TrendingUp className="h-4 w-4 text-red-400" />
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-xs font-mono font-bold text-white tracking-wider uppercase">
-                Yahoo Finance Telemetry & Interactive Market Chart
+              <h3 className="text-xs font-semibold text-white">
+                Market Price History &amp; Volume Telemetry
               </h3>
-              <span className="px-1.5 py-0.2 bg-[#38A169]/10 text-[#38A169] border border-[#38A169]/40 text-[10px] font-mono">
-                DATA PRIORITY: P3 REAL-TIME FEED
+              <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] rounded font-medium">
+                Live Feed
               </span>
             </div>
-            <div className="text-[11px] font-mono text-[#718096]">
-              {company.name} ({company.ticker}) • ${company.stockPrice.toFixed(2)} USD • 
-              <span className={company.priceChangePercent >= 0 ? 'text-[#38A169] ml-1' : 'text-[#FF4D4D] ml-1'}>
-                {company.priceChangePercent >= 0 ? '+' : ''}{company.priceChangePercent}% 24H
+            <div className="text-xs text-slate-400 mt-0.5">
+              {company.name} ({company.ticker}) • ${company.stockPrice.toFixed(2)} USD · 
+              <span className={company.priceChangePercent >= 0 ? 'text-emerald-400 ml-1 font-medium font-mono' : 'text-red-400 ml-1 font-medium font-mono'}>
+                {company.priceChangePercent >= 0 ? '+' : ''}{company.priceChangePercent}% 24h
               </span>
             </div>
           </div>
         </div>
 
         {/* Chart View Modes & Indicators */}
-        <div className="flex items-center gap-2 font-mono text-xs">
+        <div className="flex items-center gap-2 text-xs">
           {/* Timeframes */}
-          <div className="flex items-center bg-[#080b10] border border-[#1f2638] p-0.5">
+          <div className="flex items-center bg-slate-950/60 border border-slate-800 p-0.5 rounded-lg">
             {(['1M', '6M', '1Y', '3Y', '5Y'] as const).map((tf) => (
               <button
                 key={tf}
                 onClick={() => setTimeframe(tf)}
-                className={`px-2 py-0.5 text-[10px] ${
-                  timeframe === tf ? 'bg-[#FF4D4D] text-white font-bold' : 'text-[#718096] hover:text-white'
+                className={`px-2.5 py-1 text-xs rounded transition-all font-medium ${
+                  timeframe === tf ? 'bg-red-500 text-white' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 {tf}
@@ -101,30 +101,30 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
           </div>
 
           {/* Candlestick vs Area */}
-          <div className="flex items-center bg-[#080b10] border border-[#1f2638] p-0.5">
+          <div className="flex items-center bg-slate-950/60 border border-slate-800 p-0.5 rounded-lg">
             <button
               onClick={() => setChartType('candlestick')}
-              className={`px-2 py-0.5 text-[10px] ${
-                chartType === 'candlestick' ? 'bg-[#1b2336] text-[#a5b4fc] font-bold' : 'text-[#718096] hover:text-white'
+              className={`px-2.5 py-1 text-xs rounded transition-all font-medium ${
+                chartType === 'candlestick' ? 'bg-slate-800 text-slate-200' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              CANDLES
+              Candles
             </button>
             <button
               onClick={() => setChartType('area')}
-              className={`px-2 py-0.5 text-[10px] ${
-                chartType === 'area' ? 'bg-[#1b2336] text-[#a5b4fc] font-bold' : 'text-[#718096] hover:text-white'
+              className={`px-2.5 py-1 text-xs rounded transition-all font-medium ${
+                chartType === 'area' ? 'bg-slate-800 text-slate-200' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              AREA
+              Line
             </button>
           </div>
 
           {/* SMA Toggle */}
           <button
             onClick={() => setShowSMA(!showSMA)}
-            className={`px-2 py-1 text-[10px] border ${
-              showSMA ? 'border-[#38A169] text-[#38A169] bg-[#38A169]/10' : 'border-[#2d3852] text-[#718096]'
+            className={`px-2.5 py-1 text-xs rounded-lg border transition-all font-medium ${
+              showSMA ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10' : 'border-slate-800 text-slate-500'
             }`}
           >
             SMA 50/200
@@ -141,225 +141,235 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
         >
           <defs>
             <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#FF4D4D" stopOpacity="0.35" />
-              <stop offset="100%" stopColor="#FF4D4D" stopOpacity="0.0" />
+              <stop offset="0%" stopColor="#ef4444" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
             </linearGradient>
             <linearGradient id="volGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#4A5568" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#4A5568" stopOpacity="0.08" />
+              <stop offset="0%" stopColor="#64748b" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#64748b" stopOpacity="0.05" />
             </linearGradient>
           </defs>
 
-          {/* Horizontal Grid lines & Price Labels */}
-          {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
-            const y = padding.top + plotHeight * ratio;
-            const price = maxPrice - ratio * priceRange;
+          {/* Horizontal Gridlines */}
+          {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => {
+            const y = padding.top + plotHeight * pct;
+            const priceVal = maxPrice - pct * priceRange;
             return (
-              <g key={ratio}>
+              <g key={i}>
                 <line
                   x1={padding.left}
                   y1={y}
                   x2={width - padding.right}
                   y2={y}
-                  stroke="#1c2438"
-                  strokeDasharray="2,2"
+                  stroke="#1e293b"
+                  strokeDasharray="3 3"
                   strokeWidth="1"
                 />
                 <text
-                  x={padding.left - 6}
+                  x={padding.left - 8}
                   y={y + 3}
+                  fill="#64748b"
+                  fontSize="10"
+                  fontFamily="Inter, sans-serif"
                   textAnchor="end"
-                  fill="#525f7a"
-                  fontSize="9"
-                  fontFamily="monospace"
                 >
-                  ${price.toFixed(1)}
+                  ${priceVal.toFixed(0)}
                 </text>
               </g>
             );
           })}
 
-          {/* Volume histogram bars */}
+          {/* Volume bars */}
           {data.map((d, i) => {
             const x = getX(i);
-            const barW = Math.max(3, plotWidth / data.length - 8);
-            const barY = getVolY(d.volume);
-            const barH = height - padding.bottom - barY;
-            const isGreen = d.close >= d.open;
+            const y = getVolY(d.volume);
+            const barH = height - padding.bottom - y;
+            const barW = Math.max(2, (plotWidth / data.length) * 0.5);
             return (
               <rect
                 key={`vol-${i}`}
                 x={x - barW / 2}
-                y={barY}
+                y={y}
                 width={barW}
                 height={barH}
-                fill={isGreen ? '#38A169' : '#E53E3E'}
-                opacity="0.25"
+                fill="url(#volGradient)"
               />
             );
           })}
 
-          {/* Area or Candlestick Plot */}
-          {chartType === 'area' ? (
+          {/* Area Chart Mode */}
+          {chartType === 'area' && (
             <>
               <path d={areaPath} fill="url(#areaGradient)" />
-              <path d={linePath} fill="none" stroke="#FF4D4D" strokeWidth="2" />
+              <path
+                d={linePath}
+                fill="none"
+                stroke="#ef4444"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
             </>
-          ) : (
-            // Candlestick rendering
+          )}
+
+          {/* Candlestick Mode */}
+          {chartType === 'candlestick' &&
             data.map((d, i) => {
               const x = getX(i);
               const isUp = d.close >= d.open;
-              const candleColor = isUp ? '#38A169' : '#E53E3E';
-              const yHigh = getY(d.high);
-              const yLow = getY(d.low);
-              const yOpen = getY(d.open);
-              const yClose = getY(d.close);
-              const candleTop = Math.min(yOpen, yClose);
-              const candleHeight = Math.max(2, Math.abs(yClose - yOpen));
-              const candleWidth = Math.max(4, plotWidth / data.length - 6);
+              const candleColor = isUp ? '#10b981' : '#ef4444';
+              const highY = getY(d.high);
+              const lowY = getY(d.low);
+              const openY = getY(d.open);
+              const closeY = getY(d.close);
+              const bodyTop = Math.min(openY, closeY);
+              const bodyH = Math.max(2, Math.abs(closeY - openY));
+              const candleW = Math.max(3, (plotWidth / data.length) * 0.65);
 
               return (
                 <g key={`candle-${i}`}>
-                  {/* High-Low Wick */}
+                  {/* Wick */}
                   <line
                     x1={x}
-                    y1={yHigh}
+                    y1={highY}
                     x2={x}
-                    y2={yLow}
+                    y2={lowY}
                     stroke={candleColor}
-                    strokeWidth="1.5"
+                    strokeWidth="1.2"
                   />
-                  {/* Real Body */}
+                  {/* Body */}
                   <rect
-                    x={x - candleWidth / 2}
-                    y={candleTop}
-                    width={candleWidth}
-                    height={candleHeight}
+                    x={x - candleW / 2}
+                    y={bodyTop}
+                    width={candleW}
+                    height={bodyH}
                     fill={candleColor}
-                    stroke={candleColor}
-                    strokeWidth="0.5"
+                    rx="1"
                   />
                 </g>
               );
-            })
-          )}
+            })}
 
-          {/* Technical Moving Averages */}
+          {/* SMAs */}
           {showSMA && (
             <>
-              <path d={sma50Path} fill="none" stroke="#ECC94B" strokeWidth="1.2" strokeDasharray="3,3" />
-              <path d={sma200Path} fill="none" stroke="#63B3ED" strokeWidth="1.2" />
+              {sma50Path && (
+                <path
+                  d={sma50Path}
+                  fill="none"
+                  stroke="#38bdf8"
+                  strokeWidth="1.5"
+                  strokeDasharray="4 2"
+                />
+              )}
+              {sma200Path && (
+                <path
+                  d={sma200Path}
+                  fill="none"
+                  stroke="#f59e0b"
+                  strokeWidth="1.5"
+                />
+              )}
             </>
           )}
 
-          {/* Date Labels on X Axis */}
+          {/* Date labels on X-axis */}
           {data.map((d, i) => {
-            const x = getX(i);
-            return (
-              <text
-                key={`label-${i}`}
-                x={x}
-                y={height - padding.bottom + 18}
-                textAnchor="middle"
-                fill="#718096"
-                fontSize="9"
-                fontFamily="monospace"
-              >
-                {d.date}
-              </text>
-            );
+            if (i % Math.floor(data.length / 6) === 0 || i === data.length - 1) {
+              const x = getX(i);
+              return (
+                <text
+                  key={`date-${i}`}
+                  x={x}
+                  y={height - padding.bottom + 18}
+                  fill="#64748b"
+                  fontSize="10"
+                  fontFamily="Inter, sans-serif"
+                  textAnchor="middle"
+                >
+                  {d.date.slice(5)}
+                </text>
+              );
+            }
+            return null;
           })}
 
-          {/* Interactive Hover Crosshair Hitboxes */}
+          {/* Invisible hover zones */}
           {data.map((d, i) => {
             const x = getX(i);
-            const colWidth = plotWidth / data.length;
+            const colW = plotWidth / data.length;
             return (
               <rect
                 key={`hit-${i}`}
-                x={x - colWidth / 2}
+                x={x - colW / 2}
                 y={padding.top}
-                width={colWidth}
+                width={colW}
                 height={plotHeight}
                 fill="transparent"
-                className="cursor-crosshair"
                 onMouseEnter={() => setHoveredPoint(d)}
+                className="cursor-crosshair"
               />
             );
           })}
 
-          {/* Active Hover Crosshair Line */}
+          {/* Hover highlight line */}
           {hoveredPoint && (
             <line
-              x1={getX(data.indexOf(hoveredPoint))}
+              x1={getX(data.findIndex((p) => p.date === hoveredPoint.date))}
               y1={padding.top}
-              x2={getX(data.indexOf(hoveredPoint))}
+              x2={getX(data.findIndex((p) => p.date === hoveredPoint.date))}
               y2={height - padding.bottom}
-              stroke="#a5b4fc"
-              strokeDasharray="2,2"
+              stroke="#94a3b8"
+              strokeDasharray="2 2"
               strokeWidth="1"
             />
           )}
         </svg>
 
-        {/* Hover Point Tooltip Card */}
+        {/* Hover Tooltip Overlay */}
         {hoveredPoint && (
-          <div className="absolute top-2 right-4 bg-[#080b10]/95 border border-[#FF4D4D] p-2.5 font-mono text-[11px] text-[#e1e2ea] shadow-xl pointer-events-none">
-            <div className="font-bold text-[#FF4D4D] pb-1 border-b border-[#222a3d] mb-1">
-              PERIOD: {hoveredPoint.date}
+          <div className="absolute top-2 right-4 bg-slate-950/95 border border-slate-800 p-2.5 rounded-lg shadow-xl text-xs space-y-1 font-mono pointer-events-none">
+            <div className="text-slate-400 font-sans font-medium text-[11px] pb-1 border-b border-slate-800">
+              {hoveredPoint.date}
             </div>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
-              <span className="text-[#718096]">Open:</span>
-              <span className="text-right">${hoveredPoint.open.toFixed(2)}</span>
-              <span className="text-[#718096]">High:</span>
-              <span className="text-right text-[#38A169]">${hoveredPoint.high.toFixed(2)}</span>
-              <span className="text-[#718096]">Low:</span>
-              <span className="text-right text-[#FF4D4D]">${hoveredPoint.low.toFixed(2)}</span>
-              <span className="text-[#718096]">Close:</span>
-              <span className="text-right font-bold">${hoveredPoint.close.toFixed(2)}</span>
-              <span className="text-[#718096]">Volume:</span>
-              <span className="text-right text-[#a5b4fc]">{(hoveredPoint.volume / 1000000).toFixed(0)}M</span>
-              {hoveredPoint.sma50 && (
-                <>
-                  <span className="text-[#ECC94B]">SMA 50:</span>
-                  <span className="text-right">${hoveredPoint.sma50.toFixed(2)}</span>
-                </>
-              )}
+            <div className="grid grid-cols-2 gap-x-3 text-[11px]">
+              <div>Open: <span className="text-white">${hoveredPoint.open.toFixed(2)}</span></div>
+              <div>High: <span className="text-emerald-400">${hoveredPoint.high.toFixed(2)}</span></div>
+              <div>Low: <span className="text-red-400">${hoveredPoint.low.toFixed(2)}</span></div>
+              <div>Close: <span className="text-white">${hoveredPoint.close.toFixed(2)}</span></div>
+            </div>
+            <div className="text-[10px] text-slate-400 pt-1 border-t border-slate-800/60">
+              Vol: {(hoveredPoint.volume / 1e6).toFixed(1)}M shares
             </div>
           </div>
         )}
       </div>
 
-      {/* Yahoo Finance Real-time Metric Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mt-3 pt-3 border-t border-[#1c2233] text-[11px] font-mono">
-        <div className="bg-[#090c12] p-2 border border-[#1b2131]">
-          <span className="text-[#718096]">MARKET CAP</span>
-          <div className="font-bold text-white text-xs">${company.marketCap}B</div>
-        </div>
-        <div className="bg-[#090c12] p-2 border border-[#1b2131]">
-          <span className="text-[#718096]">BETA (5Y)</span>
-          <div className="font-bold text-white text-xs">{company.beta}</div>
-        </div>
-        <div className="bg-[#090c12] p-2 border border-[#1b2131]">
-          <span className="text-[#718096]">TTM OCF</span>
-          <div className="font-bold text-[#38A169] text-xs">
-            ${(company.financials.find((f) => f.year === 'TTM')?.operatingCashFlow || 0).toLocaleString()}M
+      {/* Legend strip */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800/80 mt-2 text-xs text-slate-400">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+            <span>Bullish Close</span>
           </div>
-        </div>
-        <div className="bg-[#090c12] p-2 border border-[#1b2131]">
-          <span className="text-[#718096]">52W HIGH / LOW</span>
-          <div className="font-bold text-white text-xs">
-            ${(company.stockPrice * 1.08).toFixed(1)} / ${(company.stockPrice * 0.72).toFixed(1)}
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-red-500"></span>
+            <span>Bearish Close</span>
           </div>
+          {showSMA && (
+            <>
+              <div className="flex items-center gap-1.5">
+                <span className="h-0.5 w-3 bg-sky-400"></span>
+                <span>SMA 50</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-0.5 w-3 bg-amber-400"></span>
+                <span>SMA 200</span>
+              </div>
+            </>
+          )}
         </div>
-        <div className="bg-[#090c12] p-2 border border-[#1b2131]">
-          <span className="text-[#718096]">SMA 50 STATUS</span>
-          <div className="font-bold text-[#38A169] text-xs">BULLISH (+2.4%)</div>
-        </div>
-        <div className="bg-[#090c12] p-2 border border-[#1b2131]">
-          <span className="text-[#718096]">DATA CONFIRMATION</span>
-          <div className="font-bold text-[#a5b4fc] text-xs">AUDITED 10-K</div>
+        <div className="text-[11px] text-slate-500">
+          Source: Real-time Yahoo Finance Market Data
         </div>
       </div>
     </div>

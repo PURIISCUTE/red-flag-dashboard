@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { 
-  Sliders, 
   Activity, 
-  AlertCircle, 
   RefreshCw, 
   TrendingDown, 
   ShieldAlert,
-  ArrowRight
+  ArrowRight,
+  Sliders
 } from 'lucide-react';
 import { CompanyForensicProfile } from '../types';
 
@@ -15,7 +14,6 @@ interface StressTestSimulatorProps {
 }
 
 export const StressTestSimulator: React.FC<StressTestSimulatorProps> = ({ company }) => {
-  const [isOpen, setIsOpen] = useState(false);
   const [revShockPct, setRevShockPct] = useState<number>(0);
   const [dsoStretchDays, setDsoStretchDays] = useState<number>(0);
   const [cogsInflationPct, setCogsInflationPct] = useState<number>(0);
@@ -51,154 +49,152 @@ export const StressTestSimulator: React.FC<StressTestSimulatorProps> = ({ compan
     setCogsInflationPct(0);
   };
 
+  const isStressed = revShockPct !== 0 || dsoStretchDays !== 0 || cogsInflationPct !== 0;
+
   return (
-    <div className="mb-4 bg-[#0c1018] border border-[#222a3d] p-3 text-xs font-mono">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Activity className="h-4 w-4 text-[#ECC94B]" />
-          <span className="font-bold text-white uppercase tracking-wider">
-            Interactive Working Capital & Accrual Stress Simulator
-          </span>
-          <span className="px-1.5 py-0.2 bg-[#ECC94B]/15 text-[#ECC94B] text-[10px] border border-[#ECC94B]/40">
-            DYNAMIC SCENARIO ENGINE
-          </span>
+    <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl shadow-sm space-y-4">
+      {/* Top Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
+        <div className="flex items-center gap-2.5">
+          <Activity className="h-5 w-5 text-indigo-400" />
+          <div>
+            <h3 className="text-sm font-semibold text-white">
+              Working Capital &amp; Accrual Stress Test Simulator
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Simulate operational shocks on cash conversion, Altman Z-Score, and Beneish manipulation indicators
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {isOpen && (revShockPct !== 0 || dsoStretchDays !== 0 || cogsInflationPct !== 0) && (
-            <button
-              onClick={handleReset}
-              className="flex items-center gap-1 text-[11px] text-[#718096] hover:text-white px-2 py-0.5 bg-[#161c2b] border border-[#232c40]"
-            >
-              <RefreshCw className="h-3 w-3" />
-              RESET
-            </button>
-          )}
+
+        {isStressed && (
           <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="px-2.5 py-1 bg-[#1a2133] hover:bg-[#252f47] text-white border border-[#2e3a54] text-[11px] font-bold"
+            onClick={handleReset}
+            className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition-colors"
           >
-            {isOpen ? 'COLLAPSE SIMULATOR' : 'OPEN STRESS SIMULATOR'}
+            <RefreshCw className="h-3.5 w-3.5" />
+            <span>Reset Inputs</span>
           </button>
+        )}
+      </div>
+
+      {/* Sliders Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+        {/* Revenue Shock */}
+        <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/80 space-y-1.5">
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-slate-400 font-medium">Top-line Revenue Shock</span>
+            <span className={`font-mono font-semibold ${revShockPct < 0 ? 'text-red-400' : revShockPct > 0 ? 'text-emerald-400' : 'text-slate-200'}`}>
+              {revShockPct > 0 ? `+${revShockPct}%` : `${revShockPct}%`}
+            </span>
+          </div>
+          <input
+            type="range"
+            min="-30"
+            max="20"
+            step="5"
+            value={revShockPct}
+            onChange={(e) => setRevShockPct(Number(e.target.value))}
+            className="w-full accent-red-500 cursor-pointer"
+          />
+          <div className="flex justify-between text-[10px] text-slate-500">
+            <span>-30%</span>
+            <span>Baseline (0%)</span>
+            <span>+20%</span>
+          </div>
+        </div>
+
+        {/* DSO Stretch */}
+        <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/80 space-y-1.5">
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-slate-400 font-medium">Receivables Delay (DSO)</span>
+            <span className={`font-mono font-semibold ${dsoStretchDays > 0 ? 'text-amber-400' : 'text-slate-200'}`}>
+              +{dsoStretchDays} days
+            </span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="30"
+            step="5"
+            value={dsoStretchDays}
+            onChange={(e) => setDsoStretchDays(Number(e.target.value))}
+            className="w-full accent-amber-500 cursor-pointer"
+          />
+          <div className="flex justify-between text-[10px] text-slate-500">
+            <span>0 days</span>
+            <span>+15 days</span>
+            <span>+30 days</span>
+          </div>
+        </div>
+
+        {/* COGS Inflation */}
+        <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/80 space-y-1.5">
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-slate-400 font-medium">Cost / Margin Inflation</span>
+            <span className={`font-mono font-semibold ${cogsInflationPct > 0 ? 'text-red-400' : 'text-slate-200'}`}>
+              +{cogsInflationPct}%
+            </span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="25"
+            step="5"
+            value={cogsInflationPct}
+            onChange={(e) => setCogsInflationPct(Number(e.target.value))}
+            className="w-full accent-red-500 cursor-pointer"
+          />
+          <div className="flex justify-between text-[10px] text-slate-500">
+            <span>0%</span>
+            <span>+10%</span>
+            <span>+25%</span>
+          </div>
         </div>
       </div>
 
-      {isOpen && (
-        <div className="mt-3 pt-3 border-t border-[#1c2333] space-y-3">
-          {/* Sliders Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* Revenue Shock */}
-            <div className="bg-[#080b10] p-2.5 border border-[#1b2233]">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-[#8a94a6] text-[10px]">TOP-LINE REVENUE SHOCK</span>
-                <span className={`font-bold ${revShockPct < 0 ? 'text-[#FF4D4D]' : revShockPct > 0 ? 'text-[#38A169]' : 'text-white'}`}>
-                  {revShockPct > 0 ? `+${revShockPct}%` : `${revShockPct}%`}
-                </span>
-              </div>
-              <input
-                type="range"
-                min="-30"
-                max="20"
-                step="5"
-                value={revShockPct}
-                onChange={(e) => setRevShockPct(Number(e.target.value))}
-                className="w-full accent-[#FF4D4D] cursor-pointer"
-              />
-              <div className="flex justify-between text-[9px] text-[#525f7a]">
-                <span>-30% (Severe contraction)</span>
-                <span>0%</span>
-                <span>+20%</span>
-              </div>
-            </div>
-
-            {/* DSO Stretch */}
-            <div className="bg-[#080b10] p-2.5 border border-[#1b2233]">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-[#8a94a6] text-[10px]">RECEIVABLES DELAY (DSO STRETCH)</span>
-                <span className={`font-bold ${dsoStretchDays > 0 ? 'text-[#ECC94B]' : 'text-white'}`}>
-                  +{dsoStretchDays} days
-                </span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="30"
-                step="5"
-                value={dsoStretchDays}
-                onChange={(e) => setDsoStretchDays(Number(e.target.value))}
-                className="w-full accent-[#ECC94B] cursor-pointer"
-              />
-              <div className="flex justify-between text-[9px] text-[#525f7a]">
-                <span>0d (Normal)</span>
-                <span>+15d (Delayed)</span>
-                <span>+30d (Collection Freeze)</span>
-              </div>
-            </div>
-
-            {/* COGS Inflation */}
-            <div className="bg-[#080b10] p-2.5 border border-[#1b2233]">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-[#8a94a6] text-[10px]">SUPPLY CHAIN / COGS INFLATION</span>
-                <span className={`font-bold ${cogsInflationPct > 0 ? 'text-[#FF4D4D]' : 'text-white'}`}>
-                  +{cogsInflationPct}%
-                </span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="25"
-                step="5"
-                value={cogsInflationPct}
-                onChange={(e) => setCogsInflationPct(Number(e.target.value))}
-                className="w-full accent-[#FF4D4D] cursor-pointer"
-              />
-              <div className="flex justify-between text-[9px] text-[#525f7a]">
-                <span>0% (Baseline)</span>
-                <span>+10%</span>
-                <span>+25% (Margin Squeeze)</span>
-              </div>
-            </div>
+      {/* Real-Time Stressed Impact Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+        <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/80 text-center">
+          <div className="text-[11px] text-slate-400">Stressed Revenue</div>
+          <div className="text-sm font-semibold font-mono text-white mt-1">
+            ${stressedRevenue.toLocaleString()}M
           </div>
-
-          {/* Stressed Output Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
-            <div className="bg-[#080b10] p-2 border border-[#1f2638]">
-              <span className="text-[10px] text-[#718096] block">STRESSED TTM REVENUE</span>
-              <div className="font-bold text-white text-xs">${stressedRevenue.toLocaleString()}M</div>
-              <span className={`text-[10px] ${stressedRevenue < ttm.revenue ? 'text-[#FF4D4D]' : 'text-[#38A169]'}`}>
-                {stressedRevenue < ttm.revenue ? `-$${(ttm.revenue - stressedRevenue).toLocaleString()}M` : 'Base'}
-              </span>
-            </div>
-
-            <div className="bg-[#080b10] p-2 border border-[#1f2638]">
-              <span className="text-[10px] text-[#718096] block">STRESSED FREE CASH FLOW</span>
-              <div className="font-bold text-white text-xs">${stressedFCF.toLocaleString()}M</div>
-              <span className={`text-[10px] ${stressedFCF < ttm.freeCashFlow ? 'text-[#FF4D4D]' : 'text-[#38A169]'}`}>
-                Baseline: ${ttm.freeCashFlow.toLocaleString()}M
-              </span>
-            </div>
-
-            <div className="bg-[#080b10] p-2 border border-[#1f2638]">
-              <span className="text-[10px] text-[#718096] block">SLOAN ACCRUAL RATIO</span>
-              <div className={`font-bold text-xs ${stressedAccrualRatio > 0.08 ? 'text-[#FF4D4D]' : 'text-[#38A169]'}`}>
-                {(stressedAccrualRatio * 100).toFixed(1)}%
-              </div>
-              <span className="text-[9px] text-[#718096]">
-                {stressedAccrualRatio > 0.08 ? 'DANGEROUS ACCRUALS' : 'NORMAL CASH CONVERSION'}
-              </span>
-            </div>
-
-            <div className="bg-[#080b10] p-2 border border-[#1f2638]">
-              <span className="text-[10px] text-[#718096] block">STRESSED BENEISH M-SCORE</span>
-              <div className={`font-bold text-xs ${stressedBeneish > -1.78 ? 'text-[#FF4D4D]' : 'text-[#38A169]'}`}>
-                {stressedBeneish}
-              </div>
-              <span className="text-[9px] text-[#718096]">
-                {stressedBeneish > -1.78 ? 'MANIPULATION RISK' : 'HEALTHY (< -1.78)'}
-              </span>
-            </div>
+          <div className="text-[10px] text-slate-500">
+            Base: ${ttm.revenue.toLocaleString()}M
           </div>
         </div>
-      )}
+
+        <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/80 text-center">
+          <div className="text-[11px] text-slate-400">Operating Cash Flow</div>
+          <div className={`text-sm font-semibold font-mono mt-1 ${stressedOCF < ttm.operatingCashFlow ? 'text-red-400' : 'text-white'}`}>
+            ${stressedOCF.toLocaleString()}M
+          </div>
+          <div className="text-[10px] text-slate-500">
+            Base: ${ttm.operatingCashFlow.toLocaleString()}M
+          </div>
+        </div>
+
+        <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/80 text-center">
+          <div className="text-[11px] text-slate-400">Altman Z-Score</div>
+          <div className={`text-sm font-semibold font-mono mt-1 ${stressedAltman < 1.81 ? 'text-red-400' : stressedAltman < 2.99 ? 'text-amber-400' : 'text-emerald-400'}`}>
+            {stressedAltman}
+          </div>
+          <div className="text-[10px] text-slate-500">
+            Base: {company.altmanZScore}
+          </div>
+        </div>
+
+        <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/80 text-center">
+          <div className="text-[11px] text-slate-400">Beneish M-Score</div>
+          <div className={`text-sm font-semibold font-mono mt-1 ${stressedBeneish > -1.78 ? 'text-red-400' : 'text-emerald-400'}`}>
+            {stressedBeneish}
+          </div>
+          <div className="text-[10px] text-slate-500">
+            Base: {company.beneishMScore}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

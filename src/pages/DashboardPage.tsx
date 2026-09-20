@@ -13,19 +13,21 @@ import { getDeterministicCompanyProfile } from '../data/companyData';
 import { generateAuditPdf } from '../services/pdfGenerator';
 import { 
   UserSession, 
-  AuditSensitivity, 
   InvestigationItem, 
   ForensicFlag 
 } from '../types';
 import { 
   CheckCircle2, 
   Zap, 
-  Sliders, 
   Bookmark, 
-  Download, 
-  ArrowLeft,
-  Sparkles,
-  ShieldAlert
+  ChevronDown, 
+  BarChart3, 
+  ShieldAlert, 
+  Table, 
+  Activity, 
+  FileCheck2, 
+  Layers,
+  Sparkles
 } from 'lucide-react';
 
 interface DashboardPageProps {
@@ -35,6 +37,8 @@ interface DashboardPageProps {
   onNavigateToLanding: () => void;
   onLogout: () => void;
 }
+
+type ActiveViewModule = 'overview' | 'flags' | 'financials' | 'simulator' | 'filings' | 'all';
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   currentTicker,
@@ -48,38 +52,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [isInvestigationQueueOpen, setIsInvestigationQueueOpen] = useState<boolean>(false);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
   const [notification, setNotification] = useState<string | null>(null);
-  const [auditSensitivity, setAuditSensitivity] = useState<AuditSensitivity>('standard');
   const [investigationItems, setInvestigationItems] = useState<InvestigationItem[]>([]);
   const [lastScanTime, setLastScanTime] = useState<string>('Just now');
+  
+  // Interactive View Selector
+  const [activeModule, setActiveModule] = useState<ActiveViewModule>('overview');
+  const [isModuleDropdownOpen, setIsModuleDropdownOpen] = useState<boolean>(false);
 
   // Base deterministic company profile
-  const baseProfile = useMemo(() => {
+  const companyProfile = useMemo(() => {
     return getDeterministicCompanyProfile(currentTicker);
   }, [currentTicker]);
 
-  // Dynamically adjusted profile based on selected audit sensitivity
-  const companyProfile = useMemo(() => {
-    if (auditSensitivity === 'standard') return baseProfile;
-
-    // Recalculate score dynamically if sensitivity is increased
-    const scoreDeduction = auditSensitivity === 'strict' ? 8 : 4;
-    const adjustedScore = Math.max(15, baseProfile.forensicScore - scoreDeduction);
-    const adjustedGrade: 'A+' | 'A' | 'B' | 'C' | 'D' | 'F' = 
-      adjustedScore >= 85 ? 'A+' :
-      adjustedScore >= 80 ? 'A' :
-      adjustedScore >= 70 ? 'B' :
-      adjustedScore >= 60 ? 'C' : 'D';
-
-    return {
-      ...baseProfile,
-      forensicScore: adjustedScore,
-      scoreGrade: adjustedGrade
-    };
-  }, [baseProfile, auditSensitivity]);
-
   const handleSelectTickerWithToast = (ticker: string) => {
     onSelectTicker(ticker);
-    setNotification(`Audited profile for ${ticker} loaded. SEC EDGAR XBRL facts synchronized.`);
+    setNotification(`Audited profile for ${ticker} loaded. SEC EDGAR facts synchronized.`);
     setTimeout(() => setNotification(null), 3500);
   };
 
@@ -90,7 +77,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
     if (existingIndex >= 0) {
       setInvestigationItems((prev) => prev.filter((_, idx) => idx !== existingIndex));
-      setNotification(`Removed ${flag.code} from active investigation queue.`);
+      setNotification(`Removed ${flag.code} from investigation queue.`);
     } else {
       const newItem: InvestigationItem = {
         id: `inv_${Date.now()}_${flag.code}`,
@@ -145,8 +132,50 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }, 250);
   };
 
+  // Module configuration for the interactive dropdown menu
+  const moduleList: { id: ActiveViewModule; label: string; icon: React.ReactNode; desc: string }[] = [
+    {
+      id: 'overview',
+      label: 'Executive Overview & Chart',
+      icon: <BarChart3 className="h-4 w-4 text-red-400" />,
+      desc: 'Health score, Altman Z, Beneish M-Score & stock price chart'
+    },
+    {
+      id: 'flags',
+      label: '210-Flag Forensic Matrix',
+      icon: <ShieldAlert className="h-4 w-4 text-amber-400" />,
+      desc: 'Sector-specific accounting flags, formulas & citations'
+    },
+    {
+      id: 'financials',
+      label: 'Multi-Year Financials',
+      icon: <Table className="h-4 w-4 text-emerald-400" />,
+      desc: 'Audited balance sheets, cash flows & historical ratios'
+    },
+    {
+      id: 'simulator',
+      label: 'Stress Test Simulator',
+      icon: <Activity className="h-4 w-4 text-indigo-400" />,
+      desc: 'Interactive revenue shock & working capital stress tests'
+    },
+    {
+      id: 'filings',
+      label: 'SEC Filings & Auditor Logs',
+      icon: <FileCheck2 className="h-4 w-4 text-sky-400" />,
+      desc: 'SEC accession numbers, filing dates & auditor opinions'
+    },
+    {
+      id: 'all',
+      label: 'Consolidated View (All Sections)',
+      icon: <Layers className="h-4 w-4 text-purple-400" />,
+      desc: 'Display all modules together in a single page'
+    }
+  ];
+
+  const currentModuleItem = moduleList.find((m) => m.id === activeModule) || moduleList[0];
+
   return (
-    <div className="min-h-screen flex flex-col font-sans selection:bg-[#FF4D4D] selection:text-white bg-[#080b10]">
+    <div className="min-h-screen flex flex-col font-sans selection:bg-red-500 selection:text-white bg-slate-950 text-slate-200">
       {/* Top Application Header */}
       <Header
         currentCompany={companyProfile}
@@ -160,117 +189,238 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         userSession={userSession}
         onNavigateToLanding={onNavigateToLanding}
         onLogout={onLogout}
-        auditSensitivity={auditSensitivity}
-        onChangeSensitivity={(newSens) => {
-          setAuditSensitivity(newSens);
-          setNotification(`Audit Sensitivity adjusted to ${newSens.toUpperCase()} mode.`);
-          setTimeout(() => setNotification(null), 3500);
-        }}
       />
 
       {/* Main Terminal Workspace */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-4 space-y-4">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-5 space-y-5">
         {/* Dynamic Notification Toast */}
         {notification && (
-          <div className="p-2.5 bg-[#0e1626] border border-[#38A169] text-xs font-mono text-[#38A169] flex items-center justify-between shadow-lg">
+          <div className="p-3 bg-slate-900/90 border border-emerald-500/40 text-xs font-sans text-emerald-400 flex items-center justify-between rounded-lg shadow-sm">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-[#38A169] shrink-0" />
+              <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
               <span>{notification}</span>
             </div>
             <button
               onClick={() => setNotification(null)}
-              className="text-[#718096] hover:text-white text-[11px] ml-2"
+              className="text-slate-500 hover:text-slate-300 text-xs ml-2"
             >
               ✕
             </button>
           </div>
         )}
 
-        {/* Company Active Breadcrumb & Metadata Strip */}
-        <div className="bg-[#0F131C] border border-[#22293d] p-3 flex flex-wrap items-center justify-between gap-3 shadow">
+        {/* Company Quick Profile Bar */}
+        <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl flex flex-wrap items-center justify-between gap-4 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 bg-[#181f2f] border border-[#28354f] flex items-center justify-center text-[#FF4D4D] font-mono font-bold text-sm">
-              {companyProfile.ticker.slice(0, 2)}
+            <div className="h-10 w-10 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center justify-center text-red-400 font-mono font-bold text-sm">
+              {companyProfile.ticker}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-sm font-bold text-white">
+                <span className="text-base font-semibold text-white">
                   {companyProfile.name}
                 </span>
-                <span className="px-1.5 py-0.2 bg-[#1b2233] text-[#a5b4fc] text-[10px] font-mono border border-[#2d3852]">
+                <span className="px-2 py-0.5 bg-slate-800 text-slate-300 text-[11px] rounded font-mono">
                   CIK: {companyProfile.cik}
                 </span>
-                <span className="px-1.5 py-0.2 bg-[#FF4D4D]/15 text-[#FF4D4D] text-[10px] font-mono border border-[#FF4D4D]/40">
-                  {companyProfile.lens.toUpperCase()} LENS
-                </span>
-                <span className="hidden sm:inline px-1.5 py-0.2 bg-[#38A169]/15 text-[#38A169] text-[10px] font-mono border border-[#38A169]/40">
-                  SCAN: {lastScanTime.toUpperCase()}
+                <span className="px-2 py-0.5 bg-red-500/10 text-red-400 text-[11px] rounded font-medium">
+                  {companyProfile.lens} Lens
                 </span>
               </div>
-              <p className="text-[11px] font-mono text-[#718096]">
-                {companyProfile.sector} • FY22 to FY26 Audited 10-K &amp; TTM Real-Time
+              <p className="text-xs text-slate-400 mt-0.5">
+                {companyProfile.sector} • FY22–FY26 Audited 10-K &amp; TTM Feeds
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 text-xs font-mono">
-            <div className="text-right">
-              <span className="text-[#718096] text-[10px] block">REAL-TIME PRICE</span>
-              <span className="text-white font-bold text-sm">${companyProfile.stockPrice.toFixed(2)}</span>
-            </div>
-            <div className="text-right">
-              <span className="text-[#718096] text-[10px] block">24H VARIANCE</span>
-              <span className={companyProfile.priceChangePercent >= 0 ? 'text-[#38A169] font-bold' : 'text-[#FF4D4D] font-bold'}>
-                {companyProfile.priceChangePercent >= 0 ? '+' : ''}{companyProfile.priceChangePercent}%
+          <div className="flex items-center gap-5 text-xs">
+            <div>
+              <span className="text-slate-500 text-[11px] block">Stock Price</span>
+              <span className="text-white font-semibold font-mono text-sm">
+                ${companyProfile.stockPrice.toFixed(2)}
               </span>
             </div>
-            <div className="text-right">
-              <span className="text-[#718096] text-[10px] block">MARKET CAP</span>
-              <span className="text-[#cbd5e1] font-bold">${companyProfile.marketCap}B</span>
+            <div>
+              <span className="text-slate-500 text-[11px] block">24h Change</span>
+              <span
+                className={`font-semibold font-mono ${
+                  companyProfile.priceChangePercent >= 0 ? 'text-emerald-400' : 'text-red-400'
+                }`}
+              >
+                {companyProfile.priceChangePercent >= 0 ? '+' : ''}
+                {companyProfile.priceChangePercent}%
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-500 text-[11px] block">Market Cap</span>
+              <span className="text-slate-300 font-semibold font-mono">
+                ${companyProfile.marketCap}B
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-500 text-[11px] block">Health Score</span>
+              <span className="text-white font-bold font-mono text-sm">
+                {companyProfile.forensicScore}/100 ({companyProfile.scoreGrade})
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Dynamic Audit Sensitivity Alert Strip (if non-standard) */}
-        {auditSensitivity !== 'standard' && (
-          <div className="p-2.5 bg-[#17120a] border border-[#ECC94B] text-xs font-mono text-[#ECC94B] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sliders className="h-4 w-4 text-[#ECC94B] shrink-0" />
-              <span>
-                <strong>ACTIVE AUDIT SENSITIVITY: {auditSensitivity.toUpperCase()}</strong> — Borderline flags and accruals are subject to heightened scrutiny (+{auditSensitivity === 'strict' ? '8' : '4'} pt score calibration).
-              </span>
+        {/* Interactive "Go-Down" / Dropdown View Menu */}
+        <div className="bg-slate-900/90 border border-slate-800/80 p-2.5 rounded-xl flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-slate-400 ml-1">Active Section:</span>
+            
+            {/* The Dropdown Menu Button */}
+            <div className="relative">
+              <button
+                onClick={() => setIsModuleDropdownOpen(!isModuleDropdownOpen)}
+                className="flex items-center gap-2 px-3.5 py-1.5 bg-slate-800/90 hover:bg-slate-800 text-slate-100 rounded-lg border border-slate-700/80 font-medium text-xs shadow-sm transition-all"
+              >
+                {currentModuleItem.icon}
+                <span>{currentModuleItem.label}</span>
+                <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${isModuleDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* The Dropdown Content */}
+              {isModuleDropdownOpen && (
+                <div className="absolute left-0 mt-2 w-72 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 p-1.5 space-y-1">
+                  <div className="px-2 py-1 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                    Select Interactive Module
+                  </div>
+                  {moduleList.map((mod) => (
+                    <button
+                      key={mod.id}
+                      onClick={() => {
+                        setActiveModule(mod.id);
+                        setIsModuleDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-2 rounded-lg flex items-start gap-2.5 transition-colors ${
+                        activeModule === mod.id
+                          ? 'bg-slate-800 text-white font-semibold'
+                          : 'text-slate-300 hover:bg-slate-800/60'
+                      }`}
+                    >
+                      <span className="mt-0.5">{mod.icon}</span>
+                      <div>
+                        <div className="text-xs">{mod.label}</div>
+                        <div className="text-[10px] text-slate-400">{mod.desc}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            <button
-              onClick={() => setAuditSensitivity('standard')}
-              className="text-[#cbd5e1] hover:text-white text-[11px] underline ml-2"
-            >
-              Reset to Standard
-            </button>
           </div>
-        )}
 
-        {/* 1. Concise Executive Summary (Max 4 Bullets) & Health Score Gauge */}
-        <ExecutiveSummary company={companyProfile} />
+          {/* Quick Segment Tab Pills (for 1-click convenience) */}
+          <div className="flex flex-wrap items-center gap-1">
+            {moduleList.map((mod) => (
+              <button
+                key={mod.id}
+                onClick={() => setActiveModule(mod.id)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 ${
+                  activeModule === mod.id
+                    ? 'bg-red-500/15 text-red-400 border border-red-500/30'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                }`}
+              >
+                {mod.icon}
+                <span className="hidden md:inline">{mod.label.split(' ')[0]}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
-        {/* 2. Interactive Stock Market Chart directly below Executive Summary */}
-        <StockMarketChart company={companyProfile} />
+        {/* DYNAMIC SECTION RENDERING BASED ON ACTIVE SELECTION */}
+        <div className="space-y-6">
+          {/* 1. Overview & Stock Chart */}
+          {(activeModule === 'overview' || activeModule === 'all') && (
+            <div className="space-y-5 animate-fadeIn">
+              <ExecutiveSummary company={companyProfile} />
+              <StockMarketChart company={companyProfile} />
+            </div>
+          )}
 
-        {/* Dynamic Working Capital & Financial Stress Test Simulator */}
-        <StressTestSimulator company={companyProfile} />
+          {/* 2. Complete 210-Flag Matrix */}
+          {(activeModule === 'flags' || activeModule === 'all') && (
+            <div className="animate-fadeIn">
+              <ForensicFlagMatrix 
+                company={companyProfile} 
+                investigationItems={investigationItems}
+                onToggleInvestigation={handleToggleInvestigation}
+                auditSensitivity="standard"
+              />
+            </div>
+          )}
 
-        {/* 3. Multi-Year Audited Financial Statements (FY22 - FY26 + TTM) */}
-        <MultiYearFinancials company={companyProfile} />
+          {/* 3. Multi-Year Audited Financial Statements */}
+          {(activeModule === 'financials' || activeModule === 'all') && (
+            <div className="animate-fadeIn">
+              <MultiYearFinancials company={companyProfile} />
+            </div>
+          )}
 
-        {/* 4. Complete 210-Flag Matrix across 7 Industry Lenses with Interactive Investigation Queue */}
-        <ForensicFlagMatrix 
-          company={companyProfile} 
-          investigationItems={investigationItems}
-          onToggleInvestigation={handleToggleInvestigation}
-          auditSensitivity={auditSensitivity}
-        />
+          {/* 4. Interactive Stress Test & Scenario Simulator */}
+          {(activeModule === 'simulator' || activeModule === 'all') && (
+            <div className="animate-fadeIn">
+              <StressTestSimulator company={companyProfile} />
+            </div>
+          )}
+
+          {/* 5. SEC Filing Records & Auditor Log Detail */}
+          {(activeModule === 'filings' || activeModule === 'all') && (
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-4 animate-fadeIn">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div className="flex items-center gap-2">
+                  <FileCheck2 className="h-5 w-5 text-sky-400" />
+                  <h3 className="font-semibold text-white text-sm">
+                    Audited SEC Filing Verifications &amp; Ground Truth Records
+                  </h3>
+                </div>
+                <span className="text-xs text-slate-400 font-mono">
+                  CIK #{companyProfile.cik}
+                </span>
+              </div>
+
+              <div className="space-y-2.5">
+                {companyProfile.filingAuditLogs.map((log, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3.5 bg-slate-950/60 border border-slate-800/80 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 font-mono">
+                        <span className="px-2 py-0.5 bg-sky-500/10 text-sky-400 font-semibold rounded">
+                          {log.filingType}
+                        </span>
+                        <span className="text-slate-200 font-semibold">
+                          Period Ended: {log.periodEnd}
+                        </span>
+                        <span className="text-slate-500">|</span>
+                        <span className="text-slate-400">Filed: {log.filingDate}</span>
+                      </div>
+                      <div className="text-slate-400 font-mono text-[11px]">
+                        Accession: <span className="text-slate-300">{log.secAccessionNumber}</span>
+                      </div>
+                    </div>
+
+                    <div className="sm:text-right space-y-1">
+                      <div className="text-slate-300 font-medium">{log.auditor}</div>
+                      <div className="text-emerald-400 text-[11px] font-medium flex items-center sm:justify-end gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        <span>{log.auditorOpinion}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </main>
 
-      {/* Modals & Slide-over Drawers */}
+      {/* Modals & Drawers */}
       <DataSourcePriorityModal
         isOpen={isPriorityModalOpen}
         onClose={() => setIsPriorityModalOpen(false)}
@@ -292,7 +442,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         onUpdateNote={handleUpdateInvestigationNote}
       />
 
-      {/* Sticky Bottom Legal Disclaimer & Maintenance Footer */}
+      {/* Toned Down, Clean Footer */}
       <Footer />
     </div>
   );

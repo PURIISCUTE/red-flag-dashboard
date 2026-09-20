@@ -3,9 +3,9 @@ import {
   FileSpreadsheet, 
   ArrowUpRight, 
   ArrowDownRight, 
-  HelpCircle,
-  Clock,
-  Layers
+  Info,
+  TrendingUp,
+  Table
 } from 'lucide-react';
 import { CompanyForensicProfile } from '../types';
 
@@ -19,7 +19,6 @@ export const MultiYearFinancials: React.FC<MultiYearFinancialsProps> = ({ compan
 
   const years = company.financials;
 
-  // Metric calculation definitions
   const incomeMetrics = [
     { label: 'Total Revenue', key: 'revenue', format: (v: number) => `$${v.toLocaleString()}M`, desc: 'Top-line GAAP recognized contract revenue under ASC 606' },
     { label: 'Cost of Goods Sold (COGS)', key: 'cogs', format: (v: number) => `$${v.toLocaleString()}M`, desc: 'Direct manufacturing, server compute, or merchandise fulfillment costs' },
@@ -64,75 +63,75 @@ export const MultiYearFinancials: React.FC<MultiYearFinancialsProps> = ({ compan
     activeTab === 'cashflow' ? cashFlowMetrics : ratioMetrics;
 
   return (
-    <div className="bg-[#0F131C] border border-[#22293d] p-4 mb-4 shadow-lg">
+    <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl shadow-sm space-y-4">
       {/* Top Header and Tabs */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#1c2233]">
-        <div className="flex items-center gap-2">
-          <FileSpreadsheet className="h-4 w-4 text-[#FF4D4D]" />
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
+        <div className="flex items-center gap-2.5">
+          <FileSpreadsheet className="h-5 w-5 text-emerald-400" />
           <div>
-            <h3 className="text-xs font-mono font-bold text-white tracking-wider uppercase">
-              Multi-Year & TTM Audited Financial Engine (FY22 – FY26 + TTM)
+            <h3 className="text-sm font-semibold text-white">
+              Multi-Year Audited Financial Statements
             </h3>
-            <p className="text-[11px] font-mono text-[#718096]">
-              SEC EDGAR XBRL Ground Truth vs Yahoo Finance TTM Trailing Twelve Months
+            <p className="text-xs text-slate-400 mt-0.5">
+              Historical comparisons across audited FY22–FY26 Form 10-Ks and TTM trailing reports
             </p>
           </div>
         </div>
 
         {/* Statement Switcher Tabs */}
-        <div className="flex items-center bg-[#080b10] border border-[#1f2638] p-0.5 font-mono text-xs">
+        <div className="flex items-center bg-slate-950/60 border border-slate-800 p-1 rounded-lg text-xs font-medium">
           <button
             onClick={() => setActiveTab('income')}
-            className={`px-3 py-1 text-[11px] ${
-              activeTab === 'income' ? 'bg-[#FF4D4D] text-white font-bold' : 'text-[#8a94a6] hover:text-white'
+            className={`px-3 py-1.5 rounded-md transition-all ${
+              activeTab === 'income' ? 'bg-red-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            INCOME STATEMENT
+            Income Statement
           </button>
           <button
             onClick={() => setActiveTab('balance')}
-            className={`px-3 py-1 text-[11px] ${
-              activeTab === 'balance' ? 'bg-[#FF4D4D] text-white font-bold' : 'text-[#8a94a6] hover:text-white'
+            className={`px-3 py-1.5 rounded-md transition-all ${
+              activeTab === 'balance' ? 'bg-red-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            BALANCE SHEET
+            Balance Sheet
           </button>
           <button
             onClick={() => setActiveTab('cashflow')}
-            className={`px-3 py-1 text-[11px] ${
-              activeTab === 'cashflow' ? 'bg-[#FF4D4D] text-white font-bold' : 'text-[#8a94a6] hover:text-white'
+            className={`px-3 py-1.5 rounded-md transition-all ${
+              activeTab === 'cashflow' ? 'bg-red-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            CASH FLOW
+            Cash Flow
           </button>
           <button
             onClick={() => setActiveTab('ratios')}
-            className={`px-3 py-1 text-[11px] ${
-              activeTab === 'ratios' ? 'bg-[#FF4D4D] text-white font-bold' : 'text-[#8a94a6] hover:text-white'
+            className={`px-3 py-1.5 rounded-md transition-all ${
+              activeTab === 'ratios' ? 'bg-red-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            FORENSIC RATIOS
+            Ratios &amp; Working Capital
           </button>
         </div>
       </div>
 
       {/* Financial Statement Grid Table */}
-      <div className="overflow-x-auto mt-3">
-        <table className="w-full text-left font-mono text-xs border-collapse">
+      <div className="overflow-x-auto rounded-lg border border-slate-800">
+        <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className="border-b border-[#22293d] bg-[#090c12] text-[#8a94a6] text-[11px]">
-              <th className="py-2.5 px-3">FINANCIAL LINE ITEM (USD)</th>
+            <tr className="border-b border-slate-800 bg-slate-950/80 text-slate-400 font-medium text-[11px]">
+              <th className="py-2.5 px-3">Financial Line Item (USD)</th>
               {years.map((y) => (
                 <th key={y.year} className="py-2.5 px-3 text-right">
-                  <span className={y.year === 'TTM' ? 'text-[#FF4D4D] font-bold underline' : 'text-[#e1e2ea]'}>
+                  <span className={y.year === 'TTM' ? 'text-red-400 font-semibold underline' : 'text-slate-300'}>
                     {y.year}
                   </span>
                 </th>
               ))}
-              <th className="py-2.5 px-3 text-right text-[#a5b4fc]">5Y CAGR / TTM VAR</th>
+              <th className="py-2.5 px-3 text-right text-slate-400">5Y Trend / Variance</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#181f2f]">
+          <tbody className="divide-y divide-slate-800/60">
             {activeMetrics.map((metric, idx) => {
               const fy22Val = (years[0] as unknown as Record<string, number>)[metric.key];
               const ttmVal = (years[years.length - 1] as unknown as Record<string, number>)[metric.key];
@@ -142,31 +141,40 @@ export const MultiYearFinancials: React.FC<MultiYearFinancialsProps> = ({ compan
                 <tr
                   key={metric.label}
                   onClick={() => setSelectedMetric(selectedMetric === metric.label ? null : metric.label)}
-                  className={`hover:bg-[#151c2b] transition-colors cursor-pointer ${
-                    selectedMetric === metric.label ? 'bg-[#182133]' : idx % 2 === 0 ? 'bg-[#0b0e15]' : 'bg-[#0f131c]'
+                  className={`hover:bg-slate-800/40 transition-colors cursor-pointer ${
+                    selectedMetric === metric.label ? 'bg-slate-800/60' : idx % 2 === 0 ? 'bg-slate-900/40' : 'bg-slate-900'
                   }`}
                 >
-                  <td className="py-2 px-3 text-[#d1d5db] font-medium flex items-center gap-1.5">
+                  <td className="py-2.5 px-3 text-slate-200 font-medium flex items-center gap-1.5">
                     <span>{metric.label}</span>
-                    <HelpCircle className="h-3 w-3 text-[#525f7a]" />
+                    {selectedMetric === metric.label && (
+                      <span className="text-[10px] text-slate-400 font-normal ml-1">
+                        (Active Detail)
+                      </span>
+                    )}
                   </td>
-
                   {years.map((y) => {
                     const rawVal = (y as unknown as Record<string, number>)[metric.key];
                     const formatted = metric.format(rawVal, y);
                     return (
-                      <td key={y.year} className="py-2 px-3 text-right text-[#cbd5e1]">
+                      <td
+                        key={y.year}
+                        className={`py-2.5 px-3 text-right font-mono ${
+                          y.year === 'TTM' ? 'text-white font-semibold' : 'text-slate-300'
+                        }`}
+                      >
                         {formatted}
                       </td>
                     );
                   })}
-
-                  <td className="py-2 px-3 text-right">
-                    <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold ${
-                      isGrowthPositive ? 'text-[#38A169]' : 'text-[#FF4D4D]'
-                    }`}>
+                  <td className="py-2.5 px-3 text-right">
+                    <span
+                      className={`inline-flex items-center gap-1 text-[11px] font-medium ${
+                        isGrowthPositive ? 'text-emerald-400' : 'text-red-400'
+                      }`}
+                    >
                       {isGrowthPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                      {Math.abs(Math.round(((ttmVal - fy22Val) / (Math.abs(fy22Val) || 1)) * 100))}%
+                      {fy22Val !== 0 ? `${(((ttmVal - fy22Val) / Math.abs(fy22Val)) * 100).toFixed(1)}%` : 'N/A'}
                     </span>
                   </td>
                 </tr>
@@ -176,16 +184,15 @@ export const MultiYearFinancials: React.FC<MultiYearFinancialsProps> = ({ compan
         </table>
       </div>
 
-      {/* Explanatory Info Box for Selected Metric */}
+      {/* Selected Metric Explanation Helper */}
       {selectedMetric && (
-        <div className="mt-3 p-3 bg-[#080b10] border-l-2 border-[#FF4D4D] text-xs font-mono text-[#cbd5e1] flex items-start gap-2">
-          <Layers className="h-4 w-4 text-[#FF4D4D] mt-0.5 flex-shrink-0" />
+        <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-lg text-xs flex items-start gap-2 animate-fadeIn">
+          <Info className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
           <div>
-            <span className="font-bold text-white mr-2">{selectedMetric}:</span>
-            <span>{activeMetrics.find((m) => m.label === selectedMetric)?.desc}</span>
-            <div className="mt-1 text-[10px] text-[#718096]">
-              SEC XBRL Standard Mapping: <span className="text-[#a5b4fc]">us-gaap:{selectedMetric.replace(/\s+/g, '')}</span> • Priority: P1 Audited 10-K & P3 Yahoo TTM
-            </div>
+            <strong className="text-white font-medium">{selectedMetric}:</strong>{' '}
+            <span className="text-slate-300">
+              {activeMetrics.find((m) => m.label === selectedMetric)?.desc}
+            </span>
           </div>
         </div>
       )}

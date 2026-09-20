@@ -7,34 +7,37 @@ import {
   Filter, 
   ChevronRight, 
   Info, 
-  ExternalLink,
-  BookOpen,
-  Scale,
-  Sparkles,
-  Bookmark,
-  Check,
-  Plus
+  Bookmark, 
+  Check, 
+  Plus, 
+  FileText,
+  Layers,
+  Scale
 } from 'lucide-react';
-import { ForensicFlag, IndustryLens, FlagSeverity, CompanyForensicProfile, InvestigationItem, AuditSensitivity } from '../types';
+import { 
+  ForensicFlag, 
+  IndustryLens, 
+  FlagSeverity, 
+  CompanyForensicProfile, 
+  InvestigationItem 
+} from '../types';
 
 interface ForensicFlagMatrixProps {
   company: CompanyForensicProfile;
   investigationItems?: InvestigationItem[];
   onToggleInvestigation?: (flag: ForensicFlag, note?: string) => void;
-  auditSensitivity?: AuditSensitivity;
+  auditSensitivity?: string; // Kept as optional for compatibility but unused
 }
 
 export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({ 
   company,
   investigationItems = [],
-  onToggleInvestigation,
-  auditSensitivity = 'standard'
+  onToggleInvestigation
 }) => {
   const [selectedLens, setSelectedLens] = useState<IndustryLens | 'ALL'>(company.lens);
   const [severityFilter, setSeverityFilter] = useState<FlagSeverity | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFlag, setActiveFlag] = useState<ForensicFlag | null>(null);
-  const [flagNoteInput, setFlagNoteInput] = useState('');
 
   const lenses: (IndustryLens | 'ALL')[] = [
     'ALL',
@@ -47,27 +50,8 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
     'AI/Deep Tech'
   ];
 
-  // Dynamic sensitivity adjustment for flags
-  const evaluatedFlags = React.useMemo(() => {
-    if (auditSensitivity === 'standard') return company.flags;
-
-    return company.flags.map((f, idx) => {
-      if (auditSensitivity === 'strict') {
-        // Strict mode: Upgrade borderline warnings to Critical Anomaly
-        if (f.status === 'Warning' && idx % 2 === 0) {
-          return { ...f, status: 'Critical Anomaly' as FlagSeverity, currentValue: 'BREACH (PCAOB Strict)' };
-        }
-        if (f.status === 'Healthy' && idx % 5 === 0) {
-          return { ...f, status: 'Warning' as FlagSeverity, currentValue: 'ELEVATED (Strict)' };
-        }
-      } else if (auditSensitivity === 'conservative') {
-        if (f.status === 'Healthy' && idx % 7 === 0) {
-          return { ...f, status: 'Warning' as FlagSeverity, currentValue: 'ELEVATED (Conservative)' };
-        }
-      }
-      return f;
-    });
-  }, [company.flags, auditSensitivity]);
+  // Direct evaluated flags
+  const evaluatedFlags = company.flags;
 
   // Filter flags
   const filteredFlags = evaluatedFlags.filter((flag) => {
@@ -87,164 +71,186 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
   const healthyCount = evaluatedFlags.filter((f) => f.status === 'Healthy').length;
 
   return (
-    <div className="bg-[#0F131C] border border-[#22293d] p-4 shadow-lg">
+    <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl shadow-sm space-y-4">
       {/* Matrix Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#1c2233]">
-        <div className="flex items-center gap-2">
-          <Scale className="h-4 w-4 text-[#FF4D4D]" />
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
+        <div className="flex items-center gap-2.5">
+          <Scale className="h-5 w-5 text-red-400" />
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-xs font-mono font-bold text-white tracking-wider uppercase">
-                210-Flag Forensic Discrepancy & Heuristic Matrix
+              <h3 className="text-sm font-semibold text-white">
+                210-Flag Forensic Discrepancy Matrix
               </h3>
-              <span className="px-1.5 py-0.2 bg-[#FF4D4D]/15 text-[#FF4D4D] border border-[#FF4D4D]/40 text-[10px] font-mono">
-                30 FLAGS / LENS (7 LENSES)
+              <span className="px-2 py-0.5 bg-slate-800 text-slate-300 text-[10px] rounded font-medium">
+                30 Flags / Sector Lens
               </span>
             </div>
-            <p className="text-[11px] font-mono text-[#718096]">
-              Autonomous heuristic rules evaluated against SEC EDGAR ground truth and Kaggle fraud baselines
+            <p className="text-xs text-slate-400 mt-0.5">
+              Heuristic tests benchmarked against SEC EDGAR disclosures and PCAOB criteria
             </p>
           </div>
         </div>
 
         {/* Severity Quick Filters */}
-        <div className="flex items-center gap-1.5 font-mono text-xs">
+        <div className="flex items-center gap-1.5 text-xs">
           <button
             onClick={() => setSeverityFilter('ALL')}
-            className={`px-2.5 py-1 text-[11px] border ${
-              severityFilter === 'ALL' ? 'bg-[#1e2538] text-white border-[#3b4766]' : 'border-[#1f2638] text-[#718096]'
+            className={`px-2.5 py-1 rounded-lg transition-all font-medium ${
+              severityFilter === 'ALL'
+                ? 'bg-slate-800 text-white'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            ALL (210)
+            All (210)
           </button>
           <button
             onClick={() => setSeverityFilter('Critical Anomaly')}
-            className={`px-2.5 py-1 text-[11px] border flex items-center gap-1 ${
-              severityFilter === 'Critical Anomaly' ? 'bg-[#FF4D4D]/20 text-[#FF4D4D] border-[#FF4D4D]' : 'border-[#1f2638] text-[#718096]'
+            className={`px-2.5 py-1 rounded-lg transition-all font-medium flex items-center gap-1.5 ${
+              severityFilter === 'Critical Anomaly'
+                ? 'bg-red-500/20 text-red-400 border border-red-500/40'
+                : 'text-slate-400 hover:text-red-400'
             }`}
           >
-            <span className="h-2 w-2 rounded-full bg-[#FF4D4D]"></span>
-            CRITICAL ({criticalCount})
+            <span className="h-2 w-2 rounded-full bg-red-400"></span>
+            <span>Critical ({criticalCount})</span>
           </button>
           <button
             onClick={() => setSeverityFilter('Warning')}
-            className={`px-2.5 py-1 text-[11px] border flex items-center gap-1 ${
-              severityFilter === 'Warning' ? 'bg-[#ECC94B]/20 text-[#ECC94B] border-[#ECC94B]' : 'border-[#1f2638] text-[#718096]'
+            className={`px-2.5 py-1 rounded-lg transition-all font-medium flex items-center gap-1.5 ${
+              severityFilter === 'Warning'
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                : 'text-slate-400 hover:text-amber-400'
             }`}
           >
-            <span className="h-2 w-2 rounded-full bg-[#ECC94B]"></span>
-            WARNING ({warningCount})
+            <span className="h-2 w-2 rounded-full bg-amber-400"></span>
+            <span>Warning ({warningCount})</span>
           </button>
           <button
             onClick={() => setSeverityFilter('Healthy')}
-            className={`px-2.5 py-1 text-[11px] border flex items-center gap-1 ${
-              severityFilter === 'Healthy' ? 'bg-[#38A169]/20 text-[#38A169] border-[#38A169]' : 'border-[#1f2638] text-[#718096]'
+            className={`px-2.5 py-1 rounded-lg transition-all font-medium flex items-center gap-1.5 ${
+              severityFilter === 'Healthy'
+                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                : 'text-slate-400 hover:text-emerald-400'
             }`}
           >
-            <span className="h-2 w-2 rounded-full bg-[#38A169]"></span>
-            HEALTHY ({healthyCount})
+            <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
+            <span>Clean ({healthyCount})</span>
           </button>
         </div>
       </div>
 
       {/* 7 Industry Lens Navigation Tabs */}
-      <div className="flex flex-wrap items-center gap-1 mt-3 pb-2 border-b border-[#181f2f] font-mono text-xs overflow-x-auto">
+      <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-slate-800 text-xs overflow-x-auto">
         {lenses.map((lens) => (
           <button
             key={lens}
             onClick={() => setSelectedLens(lens)}
-            className={`px-3 py-1.5 text-[11px] whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-medium text-xs ${
               selectedLens === lens
-                ? 'bg-[#FF4D4D] text-white font-bold shadow-sm'
-                : 'bg-[#090c12] text-[#8a94a6] hover:text-white border border-[#1b2233]'
+                ? 'bg-red-500 text-white shadow-sm'
+                : 'bg-slate-950/60 text-slate-400 hover:text-slate-200 border border-slate-800'
             }`}
           >
-            {lens.toUpperCase()} {lens !== 'ALL' && '(30)'}
+            {lens} {lens !== 'ALL' && '(30)'}
           </button>
         ))}
       </div>
 
       {/* Search and Table Count */}
-      <div className="flex flex-wrap items-center justify-between gap-3 py-2 text-xs font-mono text-[#718096]">
+      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
         <div className="relative flex-1 max-w-md">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Filter by flag code, title, formula, or SEC XBRL tag..."
-            className="w-full bg-[#080b10] border border-[#222a3d] focus:border-[#FF4D4D] px-8 py-1.5 text-xs text-white placeholder-[#525f7a] outline-none"
+            placeholder="Search by code, title, formula, or SEC XBRL tag..."
+            className="w-full bg-slate-950/80 border border-slate-800 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/20 px-8 py-1.5 text-xs text-slate-200 placeholder-slate-500 rounded-lg outline-none"
           />
-          <Search className="h-3.5 w-3.5 text-[#525f7a] absolute left-2.5 top-2.5" />
+          <Search className="h-3.5 w-3.5 text-slate-500 absolute left-2.5 top-2.5" />
         </div>
-        <div className="text-[11px]">
-          SHOWING <span className="text-white font-bold">{filteredFlags.length}</span> OF 210 EVALUATED FLAGS
+        <div className="text-xs">
+          Showing <span className="text-white font-medium">{filteredFlags.length}</span> of 210 flags
         </div>
       </div>
 
       {/* Matrix Table */}
-      <div className="overflow-x-auto border border-[#1c2233]">
-        <table className="w-full text-left font-mono text-xs border-collapse">
+      <div className="overflow-x-auto rounded-lg border border-slate-800">
+        <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className="border-b border-[#22293d] bg-[#090c12] text-[#8a94a6] text-[10px]">
-              <th className="py-2 px-3">CODE</th>
-              <th className="py-2 px-3">LENS</th>
-              <th className="py-2 px-3">CATEGORY</th>
-              <th className="py-2 px-3">FORENSIC OBSERVATION TITLE</th>
-              <th className="py-2 px-3">SIGNAL STATUS</th>
-              <th className="py-2 px-3 text-right">TTM READING</th>
-              <th className="py-2 px-3">DATA SOURCE</th>
-              <th className="py-2 px-3 text-center">ACTION</th>
+            <tr className="border-b border-slate-800 bg-slate-950/80 text-slate-400 font-medium text-[11px]">
+              <th className="py-2.5 px-3">Code</th>
+              <th className="py-2.5 px-3">Lens</th>
+              <th className="py-2.5 px-3">Category</th>
+              <th className="py-2.5 px-3">Observation</th>
+              <th className="py-2.5 px-3">Status</th>
+              <th className="py-2.5 px-3 text-right">TTM Reading</th>
+              <th className="py-2.5 px-3">Data Priority</th>
+              <th className="py-2.5 px-3 text-center">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#151c2b]">
-            {filteredFlags.slice(0, 45).map((flag) => {
-              const isCritical = flag.status === 'Critical Anomaly';
-              const isWarning = flag.status === 'Warning';
-              const isSelected = activeFlag?.id === flag.id;
+          <tbody className="divide-y divide-slate-800/60">
+            {filteredFlags.slice(0, 50).map((flag) => {
+              const isInvestigated = investigationItems.some(
+                (item) => item.flagCode === flag.code && item.ticker === company.ticker
+              );
 
               return (
                 <tr
-                  key={flag.id}
-                  onClick={() => setActiveFlag(isSelected ? null : flag)}
-                  className={`hover:bg-[#151d2e] transition-colors cursor-pointer ${
-                    isSelected ? 'bg-[#182338]' : isCritical ? 'bg-[#160c0f]' : 'bg-[#0b0e14]'
-                  }`}
+                  key={flag.code}
+                  className="hover:bg-slate-800/40 transition-colors cursor-pointer group"
+                  onClick={() => setActiveFlag(flag)}
                 >
-                  <td className="py-2 px-3 font-bold text-[#FF4D4D] whitespace-nowrap">
+                  <td className="py-2.5 px-3 font-mono font-semibold text-white">
                     {flag.code}
                   </td>
-                  <td className="py-2 px-3 text-[#718096] whitespace-nowrap">
+                  <td className="py-2.5 px-3 text-slate-400">
                     {flag.lens}
                   </td>
-                  <td className="py-2 px-3 text-[#a0aec0] whitespace-nowrap">
+                  <td className="py-2.5 px-3 text-slate-300">
                     {flag.category}
                   </td>
-                  <td className="py-2 px-3 text-[#e1e2ea] max-w-md truncate">
+                  <td className="py-2.5 px-3 text-slate-200 font-medium max-w-xs truncate">
                     {flag.title}
                   </td>
-                  <td className="py-2 px-3 whitespace-nowrap">
-                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold border ${
-                      isCritical
-                        ? 'bg-[#FF4D4D]/20 text-[#FF4D4D] border-[#FF4D4D]/50'
-                        : isWarning
-                        ? 'bg-[#ECC94B]/20 text-[#ECC94B] border-[#ECC94B]/50'
-                        : 'bg-[#38A169]/20 text-[#38A169] border-[#38A169]/50'
-                    }`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${
-                        isCritical ? 'bg-[#FF4D4D]' : isWarning ? 'bg-[#ECC94B]' : 'bg-[#38A169]'
-                      }`}></span>
-                      {flag.status.toUpperCase()}
+                  <td className="py-2.5 px-3">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                        flag.status === 'Critical Anomaly'
+                          ? 'bg-red-500/15 text-red-400 border border-red-500/30'
+                          : flag.status === 'Warning'
+                          ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                          : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                      }`}
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          flag.status === 'Critical Anomaly'
+                            ? 'bg-red-400'
+                            : flag.status === 'Warning'
+                            ? 'bg-amber-400'
+                            : 'bg-emerald-400'
+                        }`}
+                      ></span>
+                      {flag.status === 'Critical Anomaly' ? 'Critical' : flag.status}
                     </span>
                   </td>
-                  <td className="py-2 px-3 text-right font-bold text-[#cbd5e1] whitespace-nowrap">
+                  <td className="py-2.5 px-3 text-right font-mono font-medium text-slate-200">
                     {flag.currentValue}
                   </td>
-                  <td className="py-2 px-3 text-[#a5b4fc] text-[10px] whitespace-nowrap">
+                  <td className="py-2.5 px-3 text-slate-400 text-[11px]">
                     {flag.dataSource}
                   </td>
-                  <td className="py-2 px-3 text-center">
-                    <button className="text-[#718096] hover:text-white">
-                      <ChevronRight className={`h-4 w-4 transition-transform ${isSelected ? 'rotate-90 text-[#FF4D4D]' : ''}`} />
+                  <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => onToggleInvestigation && onToggleInvestigation(flag)}
+                      className={`p-1 rounded transition-colors ${
+                        isInvestigated
+                          ? 'text-red-400 hover:text-red-300'
+                          : 'text-slate-500 hover:text-slate-300'
+                      }`}
+                      title={isInvestigated ? 'Remove from investigation queue' : 'Add to investigation queue'}
+                    >
+                      <Bookmark className={`h-4 w-4 ${isInvestigated ? 'fill-current' : ''}`} />
                     </button>
                   </td>
                 </tr>
@@ -254,150 +260,106 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
         </table>
       </div>
 
-      {/* DYNAMIC AUDIT INFO BOX UNDER THE MATRIX */}
-      {activeFlag ? (
-        <div className="mt-4 p-4 bg-[#080b10] border border-[#FF4D4D] shadow-2xl relative">
-          <div className="flex items-center justify-between pb-2 border-b border-[#222a3d] mb-3">
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 bg-[#FF4D4D] text-white font-mono text-xs font-bold">
-                {activeFlag.code}
-              </span>
-              <h4 className="font-mono text-sm font-bold text-white">
-                {activeFlag.title}
-              </h4>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-[#a5b4fc]">
-                {activeFlag.dataSource}
-              </span>
+      {/* Flag Detail Modal / Card */}
+      {activeFlag && (
+        <div 
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn"
+          onClick={() => setActiveFlag(null)}
+        >
+          <div 
+            className="bg-slate-900 border border-slate-800 rounded-xl max-w-2xl w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between pb-3 border-b border-slate-800">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded">
+                    {activeFlag.code}
+                  </span>
+                  <span className="text-sm font-semibold text-white">
+                    {activeFlag.title}
+                  </span>
+                </div>
+                <div className="text-xs text-slate-400 mt-1">
+                  Sector Lens: <strong className="text-slate-300 font-medium">{activeFlag.lens}</strong> · Category: {activeFlag.category}
+                </div>
+              </div>
               <button
                 onClick={() => setActiveFlag(null)}
-                className="text-[#718096] hover:text-white text-xs font-mono px-2 py-0.5 bg-[#1b2233]"
+                className="text-slate-400 hover:text-white p-1 rounded-lg text-sm"
               >
-                CLOSE
+                ✕
               </button>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-mono mb-3">
-            <div className="bg-[#0f131c] p-3 border border-[#1f2638]">
-              <span className="text-[#718096] text-[10px] block mb-1">MATHEMATICAL FORMULA</span>
-              <div className="text-[#e1e2ea] font-bold text-xs">{activeFlag.formula}</div>
-            </div>
+            <div className="space-y-3 text-xs">
+              <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800 space-y-1">
+                <span className="text-slate-400 text-[11px] block font-medium">Detection Rule &amp; Formula:</span>
+                <code className="font-mono text-xs text-slate-200 block break-words">
+                  {activeFlag.formula}
+                </code>
+              </div>
 
-            <div className="bg-[#0f131c] p-3 border border-[#1f2638]">
-              <span className="text-[#718096] text-[10px] block mb-1">SEC EDGAR DISCLOSURE CITATION</span>
-              <div className="text-[#a5b4fc] text-[11px] truncate" title={activeFlag.secDisclosureCitation}>
-                {activeFlag.secDisclosureCitation}
+              <div className="space-y-1">
+                <span className="text-slate-400 text-[11px] block font-medium">Risk Explanation:</span>
+                <p className="text-slate-300 leading-relaxed">
+                  {activeFlag.riskExplanation}
+                </p>
               </div>
-            </div>
 
-            <div className="bg-[#0f131c] p-3 border border-[#1f2638]">
-              <span className="text-[#718096] text-[10px] block mb-1">KAGGLE BENCHMARK THRESHOLD</span>
-              <div className="text-[#ECC94B] text-[11px]">{activeFlag.benchmarkRule}</div>
-            </div>
-
-            <div className="bg-[#0f131c] p-3 border border-[#1f2638]">
-              <span className="text-[#718096] text-[10px] block mb-1">SIGNAL STATUS & DEDUCTION</span>
-              <div className={activeFlag.status === 'Critical Anomaly' ? 'text-[#FF4D4D] font-bold' : activeFlag.status === 'Warning' ? 'text-[#ECC94B] font-bold' : 'text-[#38A169] font-bold'}>
-                {activeFlag.status} (-{activeFlag.scoreImpact} pts)
-              </div>
-            </div>
-          </div>
-
-          {/* Historical Trend Trajectory Bar */}
-          <div className="bg-[#0f131c] p-3 border border-[#1f2638] mb-3 text-xs font-mono">
-            <span className="text-[#718096] text-[10px] block mb-2">5-YEAR & TTM SIGNAL TRAJECTORY</span>
-            <div className="grid grid-cols-6 gap-2 text-center text-[11px]">
-              <div className="bg-[#080b10] p-1.5 border border-[#181f2f]">
-                <div className="text-[#718096] text-[9px]">FY22</div>
-                <div className="font-bold text-[#e1e2ea]">{activeFlag.historicalTrend.fy22}</div>
-              </div>
-              <div className="bg-[#080b10] p-1.5 border border-[#181f2f]">
-                <div className="text-[#718096] text-[9px]">FY23</div>
-                <div className="font-bold text-[#e1e2ea]">{activeFlag.historicalTrend.fy23}</div>
-              </div>
-              <div className="bg-[#080b10] p-1.5 border border-[#181f2f]">
-                <div className="text-[#718096] text-[9px]">FY24</div>
-                <div className="font-bold text-[#e1e2ea]">{activeFlag.historicalTrend.fy24}</div>
-              </div>
-              <div className="bg-[#080b10] p-1.5 border border-[#181f2f]">
-                <div className="text-[#718096] text-[9px]">FY25</div>
-                <div className="font-bold text-[#e1e2ea]">{activeFlag.historicalTrend.fy25}</div>
-              </div>
-              <div className="bg-[#080b10] p-1.5 border border-[#181f2f]">
-                <div className="text-[#718096] text-[9px]">FY26</div>
-                <div className="font-bold text-[#e1e2ea]">{activeFlag.historicalTrend.fy26}</div>
-              </div>
-              <div className="bg-[#080b10] p-1.5 border border-[#FF4D4D]/40">
-                <div className="text-[#FF4D4D] text-[9px] font-bold">TTM ACTIVE</div>
-                <div className="font-bold text-[#FF4D4D]">{activeFlag.historicalTrend.ttm}</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-xs font-sans text-[#cbd5e1] leading-relaxed mb-4">
-            <span className="font-bold text-[#FF4D4D] font-mono mr-2">FORENSIC RISK EXPLANATION:</span>
-            {activeFlag.riskExplanation}
-          </div>
-
-          {/* Interactive Investigation Queue Action Bar */}
-          {onToggleInvestigation && (
-            <div className="pt-3 border-t border-[#1f2638] bg-[#0c1018] p-3 border">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                <span className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
-                  <Bookmark className="h-3.5 w-3.5 text-[#FF4D4D]" />
-                  INVESTIGATION DOSSIER WORKFLOW
-                </span>
-                {investigationItems.some((item) => item.flagCode === activeFlag.code && item.ticker === company.ticker) ? (
-                  <span className="text-[11px] font-mono text-[#38A169] flex items-center gap-1">
-                    <Check className="h-3.5 w-3.5" />
-                    QUEUED FOR SCRUTINY
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
+                  <span className="text-slate-400 text-[11px] block">SEC Disclosure Citation</span>
+                  <span className="font-mono text-xs text-slate-200 block mt-0.5">
+                    {activeFlag.secDisclosureCitation}
                   </span>
-                ) : (
-                  <span className="text-[11px] font-mono text-[#718096]">
-                    Not currently queued
+                </div>
+                <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
+                  <span className="text-slate-400 text-[11px] block">Current TTM Observation</span>
+                  <span className="font-mono text-xs text-white font-semibold block mt-0.5">
+                    {activeFlag.currentValue}
                   </span>
-                )}
+                </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                <input
-                  type="text"
-                  value={flagNoteInput}
-                  onChange={(e) => setFlagNoteInput(e.target.value)}
-                  placeholder="Optional auditor note (e.g., Follow up on Q3 deferred revenue reversal)..."
-                  className="flex-1 bg-[#05070a] border border-[#222a3d] focus:border-[#FF4D4D] px-3 py-1.5 text-xs text-white placeholder-[#525f7a] font-mono outline-none"
-                />
+              {/* 5-Year Historical Trend */}
+              <div className="pt-2">
+                <span className="text-slate-400 text-[11px] block mb-1.5 font-medium">Historical Multi-Year Trend:</span>
+                <div className="grid grid-cols-6 gap-1 text-center font-mono text-[11px]">
+                  {Object.entries(activeFlag.historicalTrend).map(([yr, val]) => (
+                    <div key={yr} className="bg-slate-950/80 p-2 rounded border border-slate-800/80">
+                      <div className="text-slate-500 uppercase text-[10px]">{yr}</div>
+                      <div className="text-slate-200 font-medium mt-0.5">{val}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+              <span className="text-xs text-slate-400">
+                Data Priority: <strong className="text-slate-300 font-medium">{activeFlag.dataSource}</strong>
+              </span>
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
-                    onToggleInvestigation(activeFlag, flagNoteInput);
-                    setFlagNoteInput('');
+                    onToggleInvestigation && onToggleInvestigation(activeFlag);
+                    setActiveFlag(null);
                   }}
-                  className={`px-3 py-1.5 text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-colors ${
-                    investigationItems.some((item) => item.flagCode === activeFlag.code && item.ticker === company.ticker)
-                      ? 'bg-[#1e2538] hover:bg-[#28324a] text-[#FF4D4D] border border-[#FF4D4D]/40'
-                      : 'bg-[#FF4D4D] hover:bg-[#e53e3e] text-white shadow-sm'
-                  }`}
+                  className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
                 >
                   <Bookmark className="h-3.5 w-3.5" />
-                  <span>
-                    {investigationItems.some((item) => item.flagCode === activeFlag.code && item.ticker === company.ticker)
-                      ? 'REMOVE FROM QUEUE'
-                      : 'ADD TO INVESTIGATION QUEUE'}
-                  </span>
+                  <span>Toggle Queue</span>
+                </button>
+                <button
+                  onClick={() => setActiveFlag(null)}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs transition-colors"
+                >
+                  Close
                 </button>
               </div>
             </div>
-          )}
-        </div>
-      ) : (
-        <div className="mt-3 p-3 bg-[#080b10] border border-[#1b2233] text-[11px] font-mono text-[#718096] flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Info className="h-4 w-4 text-[#a5b4fc]" />
-            <span>Click any flag above to inspect audited formula, SEC XBRL citation, Kaggle benchmark, and historical trend.</span>
           </div>
-          <span className="text-[#a5b4fc]">210 FLAGS CACHED DETERMINISTICALLY</span>
         </div>
       )}
     </div>
