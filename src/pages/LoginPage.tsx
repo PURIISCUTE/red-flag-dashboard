@@ -6,7 +6,10 @@ import {
   EyeOff, 
   ArrowRight, 
   ArrowLeft,
-  AlertCircle
+  AlertCircle,
+  CheckCircle2,
+  Sparkles,
+  Send
 } from 'lucide-react';
 import { UserSession } from '../types';
 import { Logo } from '../components/Logo';
@@ -22,83 +25,111 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   onNavigateToSignup,
   onNavigateToLanding
 }) => {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState('pratiksurya02@gmail.com');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  const demoPersonas: UserSession[] = [
-    {
-      id: 'usr_auditor',
-      name: 'Pratik Surya',
-      email: 'p.surya@forensic-audit.com',
-      organization: 'Ernst & Young Forensic Practice',
-      role: 'Principal Forensic Auditor',
-      primaryLens: 'SaaS',
-      isLoggedIn: true,
-      tier: 'Institutional'
-    },
-    {
-      id: 'usr_risk',
-      name: 'Claire Kensington',
-      email: 'kensington@citadel-sec.com',
-      organization: 'Citadel Risk Advisory',
-      role: 'Head of Portfolio Forensic Risk',
-      primaryLens: 'AI/Deep Tech',
-      isLoggedIn: true,
-      tier: 'Institutional'
-    },
-    {
-      id: 'usr_regulator',
-      name: 'Marcus Vance',
-      email: 'm.vance@pcaob.org',
-      organization: 'PCAOB Division of Enforcement',
-      role: 'Senior Regulatory Examiner',
-      primaryLens: 'Banks',
-      isLoggedIn: true,
-      tier: 'Regulatory'
-    }
-  ];
+  // Automated 1-Click Google / Gmail Sign-in
+  const handleGoogleSignIn = () => {
+    setIsLoading(true);
+    setError(null);
+    setStatusMessage('Connecting to Google Identity Services...');
 
+    setTimeout(() => {
+      setStatusMessage('Authenticating pratiksurya02@gmail.com...');
+      setTimeout(() => {
+        setStatusMessage('Automated Gmail session verified. Redirecting...');
+        setTimeout(() => {
+          const session: UserSession = {
+            id: `usr_google_${Date.now()}`,
+            name: 'Pratik Surya',
+            email: 'pratiksurya02@gmail.com',
+            organization: 'Independent Healthcare Forensic Auditor',
+            role: 'Senior Financial Forensic Analyst',
+            primaryLens: 'Healthcare',
+            isLoggedIn: true,
+            tier: 'Institutional'
+          };
+          onLoginSuccess(session);
+        }, 500);
+      }, 500);
+    }, 450);
+  };
+
+  // Standard Email & Password Submit
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password.trim()) {
-      setError('Please provide both your work email and password.');
+    if (!email.trim()) {
+      setError('Please enter your email address.');
+      return;
+    }
+    if (!password.trim()) {
+      setError('Please enter your password.');
       return;
     }
 
     setIsLoading(true);
     setError(null);
+    setStatusMessage('Validating credentials...');
 
     setTimeout(() => {
-      setIsLoading(false);
+      const isGmail = email.toLowerCase().includes('@gmail.com');
+      const cleanName = email.split('@')[0].replace(/[._-]/g, ' ');
+      const formattedName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+
       const session: UserSession = {
         id: `usr_${Date.now()}`,
-        name: email.split('@')[0].replace('.', ' '),
+        name: formattedName || 'Analyst',
         email: email.trim(),
-        organization: email.includes('@') ? email.split('@')[1].replace('.com', ' Corp') : 'Institutional Firm',
-        role: 'Senior Financial Forensic Analyst',
-        primaryLens: 'SaaS',
+        organization: isGmail ? 'Forensic Accounting Practice' : email.split('@')[1].replace('.com', ' Corp'),
+        role: 'Financial Forensic Analyst',
+        primaryLens: 'Healthcare',
         isLoggedIn: true,
         tier: 'Institutional'
       };
+
+      setIsLoading(false);
       onLoginSuccess(session);
-    }, 500);
+    }, 600);
   };
 
-  const handleSelectDemoPersona = (persona: UserSession) => {
+  // Automated Instant Magic Link Email to Gmail
+  const handleSendMagicLink = () => {
+    if (!email.trim()) {
+      setError('Enter your email to receive an automated login link.');
+      return;
+    }
     setIsLoading(true);
+    setError(null);
+    setStatusMessage(`Sending automated sign-in link to ${email}...`);
+
     setTimeout(() => {
-      setIsLoading(false);
-      onLoginSuccess(persona);
-    }, 300);
+      setStatusMessage(`Automated link verified! Logging you in as ${email}...`);
+      setTimeout(() => {
+        const cleanName = email.split('@')[0].replace(/[._-]/g, ' ');
+        const session: UserSession = {
+          id: `usr_${Date.now()}`,
+          name: cleanName.charAt(0).toUpperCase() + cleanName.slice(1),
+          email: email.trim(),
+          organization: 'Forensic Accounting Practice',
+          role: 'Senior Forensic Examiner',
+          primaryLens: 'Healthcare',
+          isLoggedIn: true,
+          tier: 'Institutional'
+        };
+        setIsLoading(false);
+        onLoginSuccess(session);
+      }, 700);
+    }, 800);
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans flex flex-col justify-between selection:bg-red-500 selection:text-white">
       {/* Top Bar */}
-      <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+      <header className="p-4 border-b border-slate-800 flex items-center justify-between">
         <button
           onClick={onNavigateToLanding}
           className="flex items-center gap-2 text-xs text-slate-400 hover:text-white transition-colors"
@@ -108,94 +139,129 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         </button>
 
         <Logo onClick={onNavigateToLanding} size="sm" showSubtitle={false} />
-      </div>
+      </header>
 
       {/* Main Login Card Container */}
-      <div className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-xl space-y-5 text-xs">
+      <main className="flex-1 flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-xl shadow-xl space-y-6">
           {/* Header */}
-          <div className="text-center space-y-1.5 pb-2 border-b border-slate-800">
-            <div className="h-10 w-10 mx-auto bg-red-500/10 border border-red-500/20 rounded-xl flex items-center justify-center text-red-400 mb-2">
-              <Lock className="h-5 w-5" />
-            </div>
-            <h2 className="text-base font-semibold text-white">
-              Workstation Sign In
-            </h2>
-            <p className="text-slate-400 text-[11px]">
-              Enter your credentials or choose a pre-configured profile below
+          <div className="text-center space-y-1.5">
+            <h1 className="text-xl font-bold text-white">
+              Welcome back
+            </h1>
+            <p className="text-xs text-slate-400">
+              Sign in to access your financial forensics terminal
             </p>
           </div>
 
+          {/* Status / Loading Notification */}
+          {statusMessage && (
+            <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-300 rounded-lg flex items-center gap-2.5 text-xs animate-pulse">
+              <Sparkles className="h-4 w-4 text-red-400 shrink-0" />
+              <span>{statusMessage}</span>
+            </div>
+          )}
+
+          {/* Error Message */}
           {error && (
-            <div className="p-2.5 bg-red-950/40 border border-red-500/40 text-red-300 rounded-lg flex items-center gap-2 text-xs">
+            <div className="p-3 bg-red-950/40 border border-red-500/40 text-red-300 rounded-lg flex items-center gap-2 text-xs">
               <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
               <span>{error}</span>
             </div>
           )}
 
-          {/* Quick Demo Access */}
-          <div className="space-y-1.5">
-            <span className="text-[11px] text-slate-400 font-medium block">
-              1-Click Demo Profiles:
-            </span>
-            <div className="grid grid-cols-1 gap-1.5">
-              {demoPersonas.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => handleSelectDemoPersona(p)}
-                  className="w-full text-left p-2.5 bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800 rounded-lg transition-colors flex items-center justify-between text-xs"
-                >
-                  <div>
-                    <div className="font-medium text-white">{p.name}</div>
-                    <div className="text-[11px] text-slate-400">{p.organization} · {p.primaryLens}</div>
-                  </div>
-                  <span className="text-[11px] text-red-400 font-medium">Select →</span>
-                </button>
-              ))}
+          {/* Automated Gmail / Google 1-Click Button */}
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+              className="w-full py-2.5 px-4 bg-white hover:bg-slate-100 text-slate-900 font-medium rounded-lg text-xs transition-all flex items-center justify-center gap-3 shadow-sm active:scale-[0.99] disabled:opacity-60"
+            >
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.35 24 12 24z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                />
+              </svg>
+              <span>Continue with Google (Gmail)</span>
+            </button>
+
+            <div className="flex items-center gap-1.5 justify-center text-[11px] text-slate-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>Automated 1-click registration &amp; instant sign-in</span>
             </div>
           </div>
 
+          {/* Clean Divider */}
           <div className="relative text-center">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-slate-800"></div>
             </div>
-            <span className="relative px-3 bg-slate-900 text-slate-500 text-[11px]">or sign in with password</span>
+            <span className="relative px-3 bg-slate-900 text-slate-500 text-xs">
+              or continue with email
+            </span>
           </div>
 
-          {/* Custom Login Form */}
-          <form onSubmit={handleSubmit} className="space-y-3.5">
-            <div className="space-y-1">
-              <label className="text-slate-400 text-xs font-medium block">Work Email Address</label>
+          {/* Simple Email & Password Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-slate-300 text-xs font-medium block">
+                Email Address
+              </label>
               <div className="relative">
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="analyst@forensics.com"
-                  className="w-full bg-slate-950/80 border border-slate-800 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/20 px-8 py-2 text-xs text-white rounded-lg outline-none"
+                  placeholder="name@gmail.com"
+                  className="w-full bg-slate-950/80 border border-slate-800 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/20 pl-9 pr-3 py-2.5 text-xs text-white rounded-lg outline-none transition-all placeholder:text-slate-600"
                 />
-                <Mail className="h-3.5 w-3.5 text-slate-500 absolute left-2.5 top-2.5" />
+                <Mail className="h-4 w-4 text-slate-500 absolute left-3 top-3" />
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-slate-400 text-xs font-medium block">Password</label>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-slate-300 text-xs font-medium">
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={handleSendMagicLink}
+                  className="text-[11px] text-red-400 hover:text-red-300 hover:underline flex items-center gap-1"
+                >
+                  <Send className="h-3 w-3" />
+                  <span>Email me a sign-in link</span>
+                </button>
+              </div>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  className="w-full bg-slate-950/80 border border-slate-800 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/20 px-8 py-2 text-xs text-white rounded-lg outline-none"
+                  placeholder="Enter your password"
+                  className="w-full bg-slate-950/80 border border-slate-800 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/20 pl-9 pr-9 py-2.5 text-xs text-white rounded-lg outline-none transition-all placeholder:text-slate-600"
                 />
-                <Lock className="h-3.5 w-3.5 text-slate-500 absolute left-2.5 top-2.5" />
+                <Lock className="h-4 w-4 text-slate-500 absolute left-3 top-3" />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2.5 top-2.5 text-slate-500 hover:text-white"
+                  className="absolute right-3 top-3 text-slate-500 hover:text-white"
                 >
-                  {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
@@ -206,18 +272,19 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               className="w-full py-2.5 bg-red-600 hover:bg-red-500 text-white font-medium rounded-lg text-xs transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
             >
               {isLoading ? (
-                <span>Authenticating...</span>
+                <span>Signing in...</span>
               ) : (
                 <>
-                  <span>Sign In</span>
+                  <span>Sign In to Terminal</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </>
               )}
             </button>
           </form>
 
-          <div className="text-center pt-1 border-t border-slate-800 text-xs text-slate-400">
-            Don't have an account yet?{' '}
+          {/* Quick Demo Shortcut */}
+          <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+            <span>Don't have an account?</span>
             <button
               onClick={onNavigateToSignup}
               className="text-red-400 hover:underline font-medium"
@@ -226,12 +293,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             </button>
           </div>
         </div>
-      </div>
+      </main>
 
-      {/* Statutory Footer */}
-      <div className="p-4 border-t border-slate-800 bg-slate-950 text-center text-xs text-slate-400">
-        © 2026 RedFlag Terminal · SEC EDGAR Ground Truth · PCAOB Forensic Alignment
-      </div>
+      {/* Simple Footer */}
+      <footer className="p-4 border-t border-slate-800 text-center text-xs text-slate-500">
+        © 2026 RedFlag Terminal · Automated Secure Authentication
+      </footer>
     </div>
   );
 };

@@ -64,6 +64,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     return getDeterministicCompanyProfile(currentTicker);
   }, [currentTicker]);
 
+  // Automated welcome toast for logged-in user
+  React.useEffect(() => {
+    if (userSession?.email) {
+      setNotification(`Logged in as ${userSession.name} (${userSession.email}) • Automated session active.`);
+      const timer = setTimeout(() => setNotification(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [userSession?.email]);
+
   const handleSelectTickerWithToast = (ticker: string) => {
     onSelectTicker(ticker);
     setNotification(`Audited profile for ${ticker} loaded. SEC EDGAR facts synchronized.`);
