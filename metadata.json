@@ -1,0 +1,6 @@
+{
+  "name": "RedFlag Terminal - Enterprise Financial Forensics",
+  "description": "Enterprise-grade financial forensics platform evaluating 210 industry flags across SEC EDGAR, Yahoo Finance, and Kaggle benchmarks with interactive market charts and multi-page PDF audit reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
