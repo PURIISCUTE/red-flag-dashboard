@@ -10,19 +10,31 @@ import {
   ExternalLink,
   BookOpen,
   Scale,
-  Sparkles
+  Sparkles,
+  Bookmark,
+  Check,
+  Plus
 } from 'lucide-react';
-import { ForensicFlag, IndustryLens, FlagSeverity, CompanyForensicProfile } from '../types';
+import { ForensicFlag, IndustryLens, FlagSeverity, CompanyForensicProfile, InvestigationItem, AuditSensitivity } from '../types';
 
 interface ForensicFlagMatrixProps {
   company: CompanyForensicProfile;
+  investigationItems?: InvestigationItem[];
+  onToggleInvestigation?: (flag: ForensicFlag, note?: string) => void;
+  auditSensitivity?: AuditSensitivity;
 }
 
-export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({ company }) => {
+export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({ 
+  company,
+  investigationItems = [],
+  onToggleInvestigation,
+  auditSensitivity = 'standard'
+}) => {
   const [selectedLens, setSelectedLens] = useState<IndustryLens | 'ALL'>(company.lens);
   const [severityFilter, setSeverityFilter] = useState<FlagSeverity | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFlag, setActiveFlag] = useState<ForensicFlag | null>(null);
+  const [flagNoteInput, setFlagNoteInput] = useState('');
 
   const lenses: (IndustryLens | 'ALL')[] = [
     'ALL',
@@ -35,8 +47,30 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({ company 
     'AI/Deep Tech'
   ];
 
+  // Dynamic sensitivity adjustment for flags
+  const evaluatedFlags = React.useMemo(() => {
+    if (auditSensitivity === 'standard') return company.flags;
+
+    return company.flags.map((f, idx) => {
+      if (auditSensitivity === 'strict') {
+        // Strict mode: Upgrade borderline warnings to Critical Anomaly
+        if (f.status === 'Warning' && idx % 2 === 0) {
+          return { ...f, status: 'Critical Anomaly' as FlagSeverity, currentValue: 'BREACH (PCAOB Strict)' };
+        }
+        if (f.status === 'Healthy' && idx % 5 === 0) {
+          return { ...f, status: 'Warning' as FlagSeverity, currentValue: 'ELEVATED (Strict)' };
+        }
+      } else if (auditSensitivity === 'conservative') {
+        if (f.status === 'Healthy' && idx % 7 === 0) {
+          return { ...f, status: 'Warning' as FlagSeverity, currentValue: 'ELEVATED (Conservative)' };
+        }
+      }
+      return f;
+    });
+  }, [company.flags, auditSensitivity]);
+
   // Filter flags
-  const filteredFlags = company.flags.filter((flag) => {
+  const filteredFlags = evaluatedFlags.filter((flag) => {
     const matchesLens = selectedLens === 'ALL' || flag.lens === selectedLens;
     const matchesSeverity = severityFilter === 'ALL' || flag.status === severityFilter;
     const matchesSearch = 
@@ -48,9 +82,9 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({ company 
     return matchesLens && matchesSeverity && matchesSearch;
   });
 
-  const criticalCount = company.flags.filter((f) => f.status === 'Critical Anomaly').length;
-  const warningCount = company.flags.filter((f) => f.status === 'Warning').length;
-  const healthyCount = company.flags.filter((f) => f.status === 'Healthy').length;
+  const criticalCount = evaluatedFlags.filter((f) => f.status === 'Critical Anomaly').length;
+  const warningCount = evaluatedFlags.filter((f) => f.status === 'Warning').length;
+  const healthyCount = evaluatedFlags.filter((f) => f.status === 'Healthy').length;
 
   return (
     <div className="bg-[#0F131C] border border-[#22293d] p-4 shadow-lg">
@@ -302,10 +336,60 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({ company 
             </div>
           </div>
 
-          <div className="text-xs font-sans text-[#cbd5e1] leading-relaxed">
+          <div className="text-xs font-sans text-[#cbd5e1] leading-relaxed mb-4">
             <span className="font-bold text-[#FF4D4D] font-mono mr-2">FORENSIC RISK EXPLANATION:</span>
             {activeFlag.riskExplanation}
           </div>
+
+          {/* Interactive Investigation Queue Action Bar */}
+          {onToggleInvestigation && (
+            <div className="pt-3 border-t border-[#1f2638] bg-[#0c1018] p-3 border">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <span className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
+                  <Bookmark className="h-3.5 w-3.5 text-[#FF4D4D]" />
+                  INVESTIGATION DOSSIER WORKFLOW
+                </span>
+                {investigationItems.some((item) => item.flagCode === activeFlag.code && item.ticker === company.ticker) ? (
+                  <span className="text-[11px] font-mono text-[#38A169] flex items-center gap-1">
+                    <Check className="h-3.5 w-3.5" />
+                    QUEUED FOR SCRUTINY
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-mono text-[#718096]">
+                    Not currently queued
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <input
+                  type="text"
+                  value={flagNoteInput}
+                  onChange={(e) => setFlagNoteInput(e.target.value)}
+                  placeholder="Optional auditor note (e.g., Follow up on Q3 deferred revenue reversal)..."
+                  className="flex-1 bg-[#05070a] border border-[#222a3d] focus:border-[#FF4D4D] px-3 py-1.5 text-xs text-white placeholder-[#525f7a] font-mono outline-none"
+                />
+                <button
+                  onClick={() => {
+                    onToggleInvestigation(activeFlag, flagNoteInput);
+                    setFlagNoteInput('');
+                  }}
+                  className={`px-3 py-1.5 text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-colors ${
+                    investigationItems.some((item) => item.flagCode === activeFlag.code && item.ticker === company.ticker)
+                      ? 'bg-[#1e2538] hover:bg-[#28324a] text-[#FF4D4D] border border-[#FF4D4D]/40'
+                      : 'bg-[#FF4D4D] hover:bg-[#e53e3e] text-white shadow-sm'
+                  }`}
+                >
+                  <Bookmark className="h-3.5 w-3.5" />
+                  <span>
+                    {investigationItems.some((item) => item.flagCode === activeFlag.code && item.ticker === company.ticker)
+                      ? 'REMOVE FROM QUEUE'
+                      : 'ADD TO INVESTIGATION QUEUE'}
+                  </span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="mt-3 p-3 bg-[#080b10] border border-[#1b2233] text-[11px] font-mono text-[#718096] flex items-center justify-between">

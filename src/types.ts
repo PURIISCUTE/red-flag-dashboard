@@ -105,3 +105,28 @@ export interface CompanyForensicProfile {
     auditorOpinion: string;
   }[];
 }
+
+export type AuditSensitivity = 'standard' | 'conservative' | 'strict';
+
+export interface UserSession {
+  id: string;
+  name: string;
+  email: string;
+  organization: string;
+  role: string;
+  primaryLens: IndustryLens;
+  avatarUrl?: string;
+  isLoggedIn: boolean;
+  tier: 'Analyst' | 'Institutional' | 'Regulatory';
+}
+
+export interface InvestigationItem {
+  id: string;
+  ticker: string;
+  flagCode: string;
+  flagTitle: string;
+  lens: IndustryLens;
+  severity: FlagSeverity;
+  addedAt: string;
+  note: string;
+}
