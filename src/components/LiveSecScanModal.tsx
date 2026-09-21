@@ -8,9 +8,11 @@ import {
   FileCode2, 
   TrendingUp, 
   ShieldCheck,
-  Zap
+  Zap,
+  Rotate3d
 } from 'lucide-react';
 import { CompanyForensicProfile } from '../types';
+import { Forensic3DScanner } from './Forensic3DScanner';
 
 interface LiveSecScanModalProps {
   isOpen: boolean;
@@ -160,8 +162,13 @@ export const LiveSecScanModal: React.FC<LiveSecScanModalProps> = ({
             </div>
           </div>
 
+          {/* 3D Holographic Ingestion Scanner */}
+          <div className="border border-[#232c40] rounded-lg overflow-hidden bg-slate-950">
+            <Forensic3DScanner height={170} />
+          </div>
+
           {/* Real-time Streaming Logs Terminal */}
-          <div className="bg-[#05070a] border border-[#1a2133] p-3 font-mono text-[11px] h-48 overflow-y-auto space-y-1">
+          <div className="bg-[#05070a] border border-[#1a2133] p-3 font-mono text-[11px] h-36 overflow-y-auto space-y-1">
             <div className="text-[#525f7a] border-b border-[#141a29] pb-1 mb-1 flex items-center justify-between">
               <span>LIVE LOG STREAM // SEC_EDGAR_CLIENT_v4.8</span>
               <span className="text-[#38A169] flex items-center gap-1">

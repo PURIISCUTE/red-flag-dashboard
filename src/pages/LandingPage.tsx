@@ -13,11 +13,15 @@ import {
   TrendingUp, 
   BarChart3, 
   Sparkles,
-  ShieldAlert
+  ShieldAlert,
+  Rotate3d,
+  Sliders
 } from 'lucide-react';
 import { IndustryLens } from '../types';
 import { getDeterministicCompanyProfile } from '../data/companyData';
 import { Logo } from '../components/Logo';
+import { Forensic3DScanner } from '../components/Forensic3DScanner';
+import { Card3D } from '../components/Card3D';
 
 interface LandingPageProps {
   onNavigateToDashboard: (ticker?: string) => void;
@@ -32,6 +36,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 }) => {
   const [heroTicker, setHeroTicker] = useState<'AAPL' | 'NVDA' | 'TSLA' | 'PYPL'>('AAPL');
   const [activeLensTab, setActiveLensTab] = useState<IndustryLens>('SaaS');
+  const [heroDisplayMode, setHeroDisplayMode] = useState<'3d' | 'preview'>('3d');
 
   const heroProfile = getDeterministicCompanyProfile(heroTicker);
 
@@ -188,55 +193,91 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             </div>
 
-            {/* Interactive Hero Preview Card */}
-            <div className="lg:col-span-5 bg-slate-900 border border-slate-800 p-5 rounded-xl shadow-xl space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-8 w-8 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center justify-center font-mono font-bold text-red-400 text-xs">
-                    {heroProfile.ticker}
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold text-white">{heroProfile.name}</div>
-                    <div className="text-[11px] text-slate-400">{heroProfile.sector} · {heroProfile.lens} Lens</div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs font-mono font-bold text-white">
-                    {heroProfile.forensicScore}/100
-                  </div>
-                  <div className="text-[10px] text-emerald-400 font-medium">Grade {heroProfile.scoreGrade}</div>
-                </div>
+            {/* Interactive Hero Column: 3D Hologram Engine OR SEC Dossier Preview */}
+            <div className="lg:col-span-5 space-y-3">
+              {/* Mode Selector Toggle */}
+              <div className="flex items-center justify-between bg-slate-900/90 p-1.5 rounded-xl border border-slate-800 text-xs">
+                <button
+                  onClick={() => setHeroDisplayMode('3d')}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg font-medium transition-all ${
+                    heroDisplayMode === '3d'
+                      ? 'bg-red-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Rotate3d className="h-3.5 w-3.5" />
+                  <span>3D Forensics Hologram</span>
+                  <span className="text-[9px] px-1 py-0.2 bg-red-800 rounded font-bold uppercase">WebGL</span>
+                </button>
+
+                <button
+                  onClick={() => setHeroDisplayMode('preview')}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg font-medium transition-all ${
+                    heroDisplayMode === 'preview'
+                      ? 'bg-slate-800 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <span>Live Dossier Card</span>
+                </button>
               </div>
 
-              {/* Ratios snippet */}
-              <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                <div className="p-2 bg-slate-950/60 rounded-lg border border-slate-800">
-                  <div className="text-slate-400 text-[10px]">Beneish M</div>
-                  <div className="font-mono font-bold text-white text-xs mt-0.5">{heroProfile.beneishMScore}</div>
+              {heroDisplayMode === '3d' ? (
+                <div className="animate-fadeIn">
+                  <Forensic3DScanner />
                 </div>
-                <div className="p-2 bg-slate-950/60 rounded-lg border border-slate-800">
-                  <div className="text-slate-400 text-[10px]">Altman Z</div>
-                  <div className="font-mono font-bold text-white text-xs mt-0.5">{heroProfile.altmanZScore}</div>
-                </div>
-                <div className="p-2 bg-slate-950/60 rounded-lg border border-slate-800">
-                  <div className="text-slate-400 text-[10px]">Sloan Accrual</div>
-                  <div className="font-mono font-bold text-white text-xs mt-0.5">{(heroProfile.sloanAccrualRatio * 100).toFixed(1)}%</div>
-                </div>
-              </div>
+              ) : (
+                <Card3D className="bg-slate-900 border border-slate-800 p-5 rounded-xl shadow-xl space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-8 w-8 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center justify-center font-mono font-bold text-red-400 text-xs">
+                        {heroProfile.ticker}
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-white">{heroProfile.name}</div>
+                        <div className="text-[11px] text-slate-400">{heroProfile.sector} · {heroProfile.lens} Lens</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-mono font-bold text-white">
+                        {heroProfile.forensicScore}/100
+                      </div>
+                      <div className="text-[10px] text-emerald-400 font-medium">Grade {heroProfile.scoreGrade}</div>
+                    </div>
+                  </div>
 
-              {/* Key Bullet */}
-              <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-800 text-xs text-slate-300 leading-relaxed">
-                <span className="text-red-400 font-medium block text-[11px] mb-1">Key SEC Observation:</span>
-                {heroProfile.executiveSummary[0]}
-              </div>
+                  {/* Ratios snippet */}
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div className="p-2 bg-slate-950/60 rounded-lg border border-slate-800">
+                      <div className="text-slate-400 text-[10px]">Beneish M</div>
+                      <div className="font-mono font-bold text-white text-xs mt-0.5">{heroProfile.beneishMScore}</div>
+                    </div>
+                    <div className="p-2 bg-slate-950/60 rounded-lg border border-slate-800">
+                      <div className="text-slate-400 text-[10px]">Altman Z</div>
+                      <div className="font-mono font-bold text-white text-xs mt-0.5">{heroProfile.altmanZScore}</div>
+                    </div>
+                    <div className="p-2 bg-slate-950/60 rounded-lg border border-slate-800">
+                      <div className="text-slate-400 text-[10px]">Sloan Accrual</div>
+                      <div className="font-mono font-bold text-white text-xs mt-0.5">{(heroProfile.sloanAccrualRatio * 100).toFixed(1)}%</div>
+                    </div>
+                  </div>
 
-              <button
-                onClick={() => onNavigateToDashboard(heroProfile.ticker)}
-                className="w-full py-2.5 bg-slate-800 hover:bg-slate-750 text-white rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
-              >
-                <span>Inspect Full Dossier for {heroProfile.ticker}</span>
-                <ArrowRight className="h-3.5 w-3.5" />
-              </button>
+                  {/* Key Bullet */}
+                  <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-800 text-xs text-slate-300 leading-relaxed">
+                    <span className="text-red-400 font-medium block text-[11px] mb-1">Key SEC Observation:</span>
+                    {heroProfile.executiveSummary[0]}
+                  </div>
+
+                  <button
+                    onClick={() => onNavigateToDashboard(heroProfile.ticker)}
+                    className="w-full py-2.5 bg-slate-800 hover:bg-slate-750 text-white rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <span>Inspect Full Dossier for {heroProfile.ticker}</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </Card3D>
+              )}
             </div>
           </div>
         </div>
@@ -283,10 +324,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {lensExamples[activeLensTab].flags.map((flag, idx) => (
-              <div key={idx} className="p-3 bg-slate-950/60 border border-slate-800 rounded-lg text-xs space-y-1">
+              <Card3D key={idx} intensity={8} className="p-3 bg-slate-950/60 border border-slate-800 rounded-lg text-xs space-y-1">
                 <div className="text-red-400 font-semibold text-[11px]">FLAG #{idx + 1}</div>
                 <div className="text-slate-200 font-medium">{flag}</div>
-              </div>
+              </Card3D>
             ))}
           </div>
 

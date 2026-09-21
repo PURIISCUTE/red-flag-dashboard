@@ -27,8 +27,11 @@ import {
   Activity, 
   FileCheck2, 
   Layers,
-  Sparkles
+  Sparkles,
+  Rotate3d
 } from 'lucide-react';
+import { ForensicRiskGlobe3D } from '../components/ForensicRiskGlobe3D';
+import { Card3D } from '../components/Card3D';
 
 interface DashboardPageProps {
   currentTicker: string;
@@ -38,7 +41,7 @@ interface DashboardPageProps {
   onLogout: () => void;
 }
 
-type ActiveViewModule = 'overview' | 'flags' | 'financials' | 'simulator' | 'filings' | 'all';
+type ActiveViewModule = 'overview' | 'globe3d' | 'flags' | 'financials' | 'simulator' | 'filings' | 'all';
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   currentTicker,
@@ -148,6 +151,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       label: 'Executive Overview & Chart',
       icon: <BarChart3 className="h-4 w-4 text-red-400" />,
       desc: 'Health score, Altman Z, Beneish M-Score & stock price chart'
+    },
+    {
+      id: 'globe3d',
+      label: '3D Forensic Risk Polyhedron',
+      icon: <Rotate3d className="h-4 w-4 text-cyan-400" />,
+      desc: 'Interactive 3D WebGL risk vector topography & orbital raycast'
     },
     {
       id: 'flags',
@@ -348,6 +357,74 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <div className="space-y-5 animate-fadeIn">
               <ExecutiveSummary company={companyProfile} />
               <StockMarketChart company={companyProfile} />
+            </div>
+          )}
+
+          {/* 1.5. Dedicated 3D Forensic Risk Polyhedron Suite */}
+          {activeModule === 'globe3d' && (
+            <div className="space-y-5 animate-fadeIn">
+              <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Rotate3d className="h-5 w-5 text-cyan-400" />
+                    <div>
+                      <h3 className="font-semibold text-white text-sm">
+                        3D Forensic Risk Polyhedron Topography &amp; Orbital Raycast
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Spherical harmonic projection of {companyProfile.ticker}'s 8 core forensic vectors in 3D WebGL space. Drag to rotate in 3D, hover over vector nodes for live telemetry.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded-full text-xs font-mono font-medium">
+                      Three.js WebGL Engine
+                    </span>
+                    <span className="px-2.5 py-1 bg-slate-800 text-slate-300 rounded-full text-xs font-mono">
+                      Health: {companyProfile.forensicScore}/100
+                    </span>
+                  </div>
+                </div>
+
+                <ForensicRiskGlobe3D company={companyProfile} height={420} />
+              </div>
+
+              {/* 3D Vector Telemetry Breakdown Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card3D intensity={12} className="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-2">
+                  <div className="text-[11px] font-mono text-cyan-400 font-semibold">VECTOR 01 // ACCRUAL DENSITY</div>
+                  <div className="text-lg font-bold font-mono text-white">{(companyProfile.sloanAccrualRatio * 100).toFixed(1)}%</div>
+                  <p className="text-xs text-slate-400">
+                    Sloan Accrual ratio measuring non-cash earnings component vs total asset base.
+                  </p>
+                </Card3D>
+
+                <Card3D intensity={12} className="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-2">
+                  <div className="text-[11px] font-mono text-cyan-400 font-semibold">VECTOR 02 // BENEISH MANIPULATION</div>
+                  <div className="text-lg font-bold font-mono text-white">{companyProfile.beneishMScore}</div>
+                  <p className="text-xs text-slate-400">
+                    Probabilistic regression score detecting earnings manipulation through 8 financial indexes.
+                  </p>
+                </Card3D>
+
+                <Card3D intensity={12} className="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-2">
+                  <div className="text-[11px] font-mono text-cyan-400 font-semibold">VECTOR 03 // DISTRESS ELEVATION</div>
+                  <div className="text-lg font-bold font-mono text-white">{companyProfile.altmanZScore}</div>
+                  <p className="text-xs text-slate-400">
+                    Altman Z-Score assessing liquidity, cumulative profitability, and balance sheet leverage.
+                  </p>
+                </Card3D>
+
+                <Card3D intensity={12} className="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-2">
+                  <div className="text-[11px] font-mono text-cyan-400 font-semibold">VECTOR 04 // 210-FLAG HEURISTIC</div>
+                  <div className="text-lg font-bold font-mono text-red-400">
+                    {companyProfile.flags.filter(f => f.status === 'Critical Anomaly').length} Critical
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Deterministic accounting red flags identified within primary SEC XBRL filings.
+                  </p>
+                </Card3D>
+              </div>
             </div>
           )}
 
