@@ -214,7 +214,7 @@ export function generateAuditPdf(company: CompanyForensicProfile): void {
     doc.text('Page 1 of 8 | Confidential Audit Report', pageWidth - 180, pageHeight - 24);
 
     // ----------------------------------------------------
-    // PAGE 2+: COMPREHENSIVE 210-FLAG MATRIX
+    // PAGE 2+: COMPREHENSIVE 30 RED FLAGS MATRIX
     // ----------------------------------------------------
     doc.addPage();
 
@@ -227,7 +227,7 @@ export function generateAuditPdf(company: CompanyForensicProfile): void {
     doc.setTextColor(255, 77, 77);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
-    doc.text('REDFLAG TERMINAL — 210-FLAG INDUSTRY FORENSIC MATRIX', 36, 24);
+    doc.text('REDFLAG TERMINAL — 30 RED FLAGS FORENSIC MATRIX', 36, 24);
 
     doc.setTextColor(180, 190, 205);
     doc.setFont('helvetica', 'normal');

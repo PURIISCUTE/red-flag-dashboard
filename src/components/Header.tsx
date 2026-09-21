@@ -9,9 +9,11 @@ import {
   Globe, 
   LogOut,
   LayoutDashboard,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { CompanyForensicProfile, UserSession } from '../types';
+import { isValidStockTicker } from '../data/companyData';
 import { Logo } from './Logo';
 
 interface HeaderProps {
@@ -42,15 +44,24 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout
 }) => {
   const [searchInput, setSearchInput] = useState('');
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const popularTickers = ['AAPL', 'NVDA', 'MSFT', 'AMZN', 'PYPL', 'JPM', 'TSLA'];
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchInput.trim()) {
-      onSelectCompany(searchInput.trim().toUpperCase());
-      setSearchInput('');
+    const raw = searchInput.trim().toUpperCase();
+    if (!raw) return;
+
+    if (!isValidStockTicker(raw)) {
+      setSearchError(`"${raw}" is not a recognized real stock ticker. Only real listed tickers are permitted (e.g. AAPL, NVDA, TSLA, MSFT, GOOGL, AMZN, META, PYPL, JPM).`);
+      setTimeout(() => setSearchError(null), 5000);
+      return;
     }
+
+    setSearchError(null);
+    onSelectCompany(raw);
+    setSearchInput('');
   };
 
   return (
@@ -63,7 +74,7 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-slate-300 font-medium">SEC EDGAR API: Connected</span>
           </div>
           <span className="text-slate-700">|</span>
-          <span className="text-slate-400 hidden sm:inline">210 Heuristic Rules Active</span>
+          <span className="text-slate-400 hidden sm:inline">30 Red Flags Heuristics Active</span>
           <span className="text-slate-700 hidden sm:inline">|</span>
           <span className="text-slate-400 hidden md:inline">Real-time Yahoo TTM Feeds</span>
         </div>
@@ -110,24 +121,46 @@ export const Header: React.FC<HeaderProps> = ({
             ))}
           </div>
 
-          <form onSubmit={handleSearchSubmit} className="relative flex-1">
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search ticker (e.g. AAPL, NVDA, TSLA)..."
-              className="w-full bg-slate-900/90 border border-slate-800 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/20 px-8 py-1.5 text-xs text-slate-200 placeholder-slate-500 rounded-lg outline-none transition-all font-sans"
-            />
-            <Search className="h-3.5 w-3.5 text-slate-500 absolute left-2.5 top-2.5" />
-            {searchInput && (
-              <button
-                type="submit"
-                className="absolute right-1.5 top-1 px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] font-sans text-slate-200 rounded border border-slate-700"
-              >
-                Scan
-              </button>
+          <div className="relative flex-1">
+            <form onSubmit={handleSearchSubmit} className="relative w-full">
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => {
+                  setSearchInput(e.target.value);
+                  if (searchError) setSearchError(null);
+                }}
+                placeholder="Search real stock ticker (e.g. AAPL, NVDA, TSLA)..."
+                className="w-full bg-slate-900/90 border border-slate-800 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/20 px-8 py-1.5 text-xs text-slate-200 placeholder-slate-500 rounded-lg outline-none transition-all font-sans"
+              />
+              <Search className="h-3.5 w-3.5 text-slate-500 absolute left-2.5 top-2.5" />
+              {searchInput && (
+                <button
+                  type="submit"
+                  className="absolute right-1.5 top-1 px-2 py-0.5 bg-red-600 hover:bg-red-500 text-[10px] font-sans text-white rounded font-medium transition-colors"
+                >
+                  Scan
+                </button>
+              )}
+            </form>
+
+            {searchError && (
+              <div className="absolute top-full left-0 right-0 mt-1.5 p-2.5 bg-red-950/95 border border-red-500/60 rounded-lg shadow-xl text-xs text-red-200 z-50 flex items-start gap-2 animate-fadeIn">
+                <AlertCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <div className="font-semibold text-red-300">Invalid Stock Ticker</div>
+                  <div className="text-[11px] text-red-200/90 mt-0.5">{searchError}</div>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => setSearchError(null)}
+                  className="text-red-400 hover:text-white text-xs px-1"
+                >
+                  ✕
+                </button>
+              </div>
             )}
-          </form>
+          </div>
         </div>
 
         {/* Action Controls */}

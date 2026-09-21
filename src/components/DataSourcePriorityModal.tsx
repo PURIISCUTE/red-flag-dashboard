@@ -58,7 +58,7 @@ export const DataSourcePriorityModal: React.FC<DataSourcePriorityModalProps> = (
             <div className="flex items-center justify-between mb-1.5">
               <span className="font-bold text-[#FF4D4D] text-xs flex items-center gap-1.5">
                 <Cpu className="h-4 w-4" />
-                PRIORITY 2 (FORENSIC RULE PRIORITY): 210-FLAG HEURISTIC ENGINES
+                PRIORITY 2 (FORENSIC RULE PRIORITY): 30-RED-FLAG HEURISTIC ENGINES
               </span>
               <span className="px-1.5 py-0.2 bg-[#FF4D4D]/15 text-[#FF4D4D] text-[10px] font-bold">
                 DETERMINISTIC LOGIC

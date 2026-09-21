@@ -96,32 +96,32 @@ export const ExecutiveSummary: React.FC<ExecutiveSummaryProps> = ({ company }) =
 
           {/* 3 Core Forensic Indicator Readouts */}
           <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-800 mt-3 text-center">
-            <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">
-              <div className="text-slate-400 text-[10px]">Beneish M</div>
-              <div className={`font-mono font-bold text-sm my-0.5 ${company.beneishMScore < -1.78 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {company.beneishMScore}
+            <div className="bg-slate-950/80 p-2 rounded-lg border border-slate-800/80 overflow-hidden min-w-0">
+              <div className="text-slate-400 text-[10px] truncate">Beneish M</div>
+              <div className={`font-mono font-bold text-sm my-0.5 truncate ${company.beneishMScore < -1.78 ? 'text-emerald-400' : 'text-red-400'}`} title={Number(company.beneishMScore).toFixed(2)}>
+                {Number(company.beneishMScore).toFixed(2)}
               </div>
-              <div className="text-[10px] text-slate-500">
+              <div className="text-[10px] text-slate-500 truncate">
                 {company.beneishMScore < -1.78 ? 'Normal' : 'Watch'}
               </div>
             </div>
 
-            <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">
-              <div className="text-slate-400 text-[10px]">Altman Z</div>
-              <div className={`font-mono font-bold text-sm my-0.5 ${company.altmanZScore > 2.99 ? 'text-emerald-400' : company.altmanZScore > 1.81 ? 'text-amber-400' : 'text-red-400'}`}>
-                {company.altmanZScore}
+            <div className="bg-slate-950/80 p-2 rounded-lg border border-slate-800/80 overflow-hidden min-w-0">
+              <div className="text-slate-400 text-[10px] truncate">Altman Z</div>
+              <div className={`font-mono font-bold text-sm my-0.5 truncate ${company.altmanZScore > 2.99 ? 'text-emerald-400' : company.altmanZScore > 1.81 ? 'text-amber-400' : 'text-red-400'}`} title={Number(company.altmanZScore).toFixed(2)}>
+                {Number(company.altmanZScore).toFixed(2)}
               </div>
-              <div className="text-[10px] text-slate-500">
+              <div className="text-[10px] text-slate-500 truncate">
                 {company.altmanZScore > 2.99 ? 'Safe' : 'Distress'}
               </div>
             </div>
 
-            <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">
-              <div className="text-slate-400 text-[10px]">Sloan Accrual</div>
-              <div className={`font-mono font-bold text-sm my-0.5 ${company.sloanAccrualRatio < 0.05 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {(company.sloanAccrualRatio * 100).toFixed(1)}%
+            <div className="bg-slate-950/80 p-2 rounded-lg border border-slate-800/80 overflow-hidden min-w-0">
+              <div className="text-slate-400 text-[10px] truncate">Sloan Accrual</div>
+              <div className={`font-mono font-bold text-sm my-0.5 truncate ${company.sloanAccrualRatio < 0.05 ? 'text-emerald-400' : 'text-red-400'}`} title={`${(Number(company.sloanAccrualRatio) * 100).toFixed(1)}%`}>
+                {(Number(company.sloanAccrualRatio) * 100).toFixed(1)}%
               </div>
-              <div className="text-[10px] text-slate-500">
+              <div className="text-[10px] text-slate-500 truncate">
                 {company.sloanAccrualRatio < 0.05 ? 'Cash Backed' : 'High Accrual'}
               </div>
             </div>

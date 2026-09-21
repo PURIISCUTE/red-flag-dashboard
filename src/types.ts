@@ -11,6 +11,18 @@ export type FlagSeverity = 'Critical Anomaly' | 'Warning' | 'Healthy';
 
 export type DataSourcePriority = 'SEC EDGAR (P1)' | 'Forensic Rule (P2)' | 'Yahoo Finance (P3)' | 'Kaggle Benchmark (P4)';
 
+export interface FlagYearStat {
+  year: string;
+  fiscalPeriod: string;
+  metricValue: string;
+  benchmark: string;
+  deviation: string;
+  status: FlagSeverity;
+  secLineItem: string;
+  impactScore: number;
+  narrative?: string;
+}
+
 export interface ForensicFlag {
   id: string;
   code: string;
@@ -32,6 +44,9 @@ export interface ForensicFlag {
     fy26: string;
     ttm: string;
   };
+  year1Stat?: FlagYearStat;
+  year2Stat?: FlagYearStat;
+  year3Stat?: FlagYearStat;
   dataSource: DataSourcePriority;
   riskExplanation: string;
 }
@@ -112,12 +127,13 @@ export interface UserSession {
   id: string;
   name: string;
   email: string;
-  organization: string;
-  role: string;
-  primaryLens: IndustryLens;
-  avatarUrl?: string;
   isLoggedIn: boolean;
-  tier: 'Analyst' | 'Institutional' | 'Regulatory';
+  emailVerified?: boolean;
+  organization?: string;
+  role?: string;
+  primaryLens?: IndustryLens;
+  avatarUrl?: string;
+  tier?: 'Analyst' | 'Institutional' | 'Regulatory' | 'Standard';
 }
 
 export interface InvestigationItem {

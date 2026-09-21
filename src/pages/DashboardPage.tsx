@@ -9,7 +9,7 @@ import { LiveSecScanModal } from '../components/LiveSecScanModal';
 import { InvestigationQueueDrawer } from '../components/InvestigationQueueDrawer';
 import { StressTestSimulator } from '../components/StressTestSimulator';
 import { Footer } from '../components/Footer';
-import { getDeterministicCompanyProfile } from '../data/companyData';
+import { getDeterministicCompanyProfile, isValidStockTicker } from '../data/companyData';
 import { generateAuditPdf } from '../services/pdfGenerator';
 import { 
   UserSession, 
@@ -64,21 +64,29 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   // Base deterministic company profile
   const companyProfile = useMemo(() => {
-    return getDeterministicCompanyProfile(currentTicker);
+    const profile = getDeterministicCompanyProfile(currentTicker);
+    if (profile) return profile;
+    return getDeterministicCompanyProfile('AAPL')!;
   }, [currentTicker]);
 
   // Automated welcome toast for logged-in user
   React.useEffect(() => {
     if (userSession?.email) {
-      setNotification(`Logged in as ${userSession.name} (${userSession.email}) • Automated session active.`);
+      setNotification(`Logged in as ${userSession.name} (${userSession.email}) • Active session.`);
       const timer = setTimeout(() => setNotification(null), 4000);
       return () => clearTimeout(timer);
     }
   }, [userSession?.email]);
 
   const handleSelectTickerWithToast = (ticker: string) => {
-    onSelectTicker(ticker);
-    setNotification(`Audited profile for ${ticker} loaded. SEC EDGAR facts synchronized.`);
+    const clean = ticker.toUpperCase().trim();
+    if (!isValidStockTicker(clean)) {
+      setNotification(`⚠️ Ticker "${clean}" not recognized. Please enter a valid listed stock ticker.`);
+      setTimeout(() => setNotification(null), 4500);
+      return;
+    }
+    onSelectTicker(clean);
+    setNotification(`Audited profile for ${clean} loaded. SEC EDGAR facts synchronized.`);
     setTimeout(() => setNotification(null), 3500);
   };
 
@@ -160,9 +168,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     },
     {
       id: 'flags',
-      label: '210-Flag Forensic Matrix',
+      label: '30 Red Flags Forensic Matrix',
       icon: <ShieldAlert className="h-4 w-4 text-amber-400" />,
-      desc: 'Sector-specific accounting flags, formulas & citations'
+      desc: 'Sector-specific accounting red flags, formulas & audited citations'
     },
     {
       id: 'financials',
@@ -416,7 +424,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </Card3D>
 
                 <Card3D intensity={12} className="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-2">
-                  <div className="text-[11px] font-mono text-cyan-400 font-semibold">VECTOR 04 // 210-FLAG HEURISTIC</div>
+                  <div className="text-[11px] font-mono text-cyan-400 font-semibold">VECTOR 04 // 30-RED-FLAG HEURISTIC</div>
                   <div className="text-lg font-bold font-mono text-red-400">
                     {companyProfile.flags.filter(f => f.status === 'Critical Anomaly').length} Critical
                   </div>
@@ -428,7 +436,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
           )}
 
-          {/* 2. Complete 210-Flag Matrix */}
+          {/* 2. Complete 30-Red-Flag Matrix */}
           {(activeModule === 'flags' || activeModule === 'all') && (
             <div className="animate-fadeIn">
               <ForensicFlagMatrix 

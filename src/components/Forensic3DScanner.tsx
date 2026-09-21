@@ -352,7 +352,7 @@ export const Forensic3DScanner: React.FC<Forensic3DScannerProps> = ({ className 
         <div className="bg-slate-900/85 backdrop-blur border border-slate-800 p-2.5 rounded-xl pointer-events-auto">
           <div className="text-[10px] text-slate-400">Core Telemetry</div>
           <div className="font-mono text-white font-semibold text-xs mt-0.5 flex items-center gap-1">
-            <span className="text-red-400">210</span> Accounting Rules
+            <span className="text-red-400">30</span> Red Flags
           </div>
         </div>
 

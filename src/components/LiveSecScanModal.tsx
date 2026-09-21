@@ -63,7 +63,7 @@ export const LiveSecScanModal: React.FC<LiveSecScanModalProps> = ({
       setProgress(80);
       setLogs((prev) => [
         ...prev,
-        `[RULES] Evaluating 210 heuristic anomaly checkpoints for lens: ${company.lens.toUpperCase()}`,
+        `[RULES] Evaluating 30 red flag anomaly checkpoints for lens: ${company.lens.toUpperCase()}`,
         `[HEURISTIC] Calculating Beneish M-Score: DSRI, GMI, AQI, SGI, DEPI, SGAI, LVGI, TATA`,
         `[KAGGLE] Cross-referencing 20,000+ audited US corporate financial fraud baseline distributions`
       ]);
@@ -148,7 +148,7 @@ export const LiveSecScanModal: React.FC<LiveSecScanModalProps> = ({
             <div className={`p-2 border ${stage >= 3 ? 'border-[#FF4D4D] bg-[#241318] text-white' : 'border-[#1b2233] text-[#525f7a]'}`}>
               <div className="flex items-center gap-1 mb-1">
                 <FileCode2 className="h-3 w-3 text-[#FF4D4D]" />
-                <span className="font-bold">3. 210 Rules</span>
+                <span className="font-bold">3. 30 Red Flags</span>
               </div>
               <span>Heuristic Run</span>
             </div>

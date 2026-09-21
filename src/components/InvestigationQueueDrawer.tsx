@@ -121,7 +121,7 @@ ${item.note || '(No custom observation notes recorded)'}
                 Investigation Queue is Empty
               </p>
               <p className="font-mono text-[11px] text-[#718096] max-w-xs">
-                In the 210-Flag Matrix, select any warning or critical anomaly and click &quot;Add to Investigation Queue&quot; to bookmark it with custom forensic notes.
+                In the 30 Red Flags Matrix, select any warning or critical anomaly and click &quot;Add to Investigation Queue&quot; to bookmark it with custom forensic notes.
               </p>
             </div>
           ) : (

@@ -38,7 +38,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [activeLensTab, setActiveLensTab] = useState<IndustryLens>('SaaS');
   const [heroDisplayMode, setHeroDisplayMode] = useState<'3d' | 'preview'>('3d');
 
-  const heroProfile = getDeterministicCompanyProfile(heroTicker);
+  const heroProfile = getDeterministicCompanyProfile(heroTicker) || getDeterministicCompanyProfile('AAPL')!;
 
   const lensExamples: Record<IndustryLens, { flags: string[]; formula: string; secCitation: string }> = {
     'SaaS': {
@@ -79,7 +79,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-red-500 selection:text-white">
+    <div className="min-h-screen bg-checkered text-slate-200 font-sans selection:bg-red-500 selection:text-white">
       {/* Top Header */}
       <header className="border-b border-slate-800/80 bg-slate-950/90 backdrop-blur sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -88,7 +88,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {/* Navigation Links */}
           <nav className="hidden md:flex items-center gap-6 text-xs text-slate-400 font-medium">
             <a href="#features" className="hover:text-white transition-colors">Core Engine</a>
-            <a href="#lenses" className="hover:text-white transition-colors">210-Flag Matrix</a>
+            <a href="#lenses" className="hover:text-white transition-colors">30 Red Flags Matrix</a>
             <a href="#pipeline" className="hover:text-white transition-colors">SEC Ground Truth</a>
             <a href="#pricing" className="hover:text-white transition-colors">Access Tiers</a>
           </nav>
@@ -134,7 +134,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </h1>
 
               <p className="text-base text-slate-400 leading-relaxed max-w-2xl">
-                Detect revenue manipulation, aggressive accruals, and hidden balance-sheet liabilities across <span className="text-white font-medium">210 specialized forensic heuristics</span> spanning 7 industry lenses. Verified against primary SEC EDGAR ground truth.
+                Detect revenue manipulation, aggressive accruals, and hidden balance-sheet liabilities across <span className="text-white font-medium">30 specialized red flags</span> spanning targeted industry lenses. Verified against primary SEC EDGAR ground truth.
               </p>
 
               {/* Bullet Checklist */}
@@ -145,7 +145,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                  <span>210 Flags across 7 Specialized Lenses</span>
+                  <span>30 Red Flags across Specialized Lenses</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
@@ -283,11 +283,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* 210-Flag Sector Matrix Exploration */}
+      {/* 30 Red Flags Sector Matrix Exploration */}
       <section id="lenses" className="py-16 px-4 max-w-7xl mx-auto space-y-6">
         <div className="max-w-2xl space-y-2">
           <h2 className="text-2xl font-bold text-white">
-            210 Heuristics Across 7 Industry Lenses
+            30 Red Flags Across Industry Lenses
           </h2>
           <p className="text-sm text-slate-400">
             Accounting red flags vary by industry. Retail requires inventory shrink tests, while SaaS demands unbilled AR vs deferred revenue scrutiny.
@@ -353,7 +353,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <Logo size="sm" showSubtitle={true} />
           <div className="text-center md:text-right text-xs text-slate-500">
-            SEC EDGAR XBRL Heuristics · 210-Flag Matrix · For Informational Purposes
+            SEC EDGAR XBRL Heuristics · 30 Red Flags Matrix · For Informational Purposes
           </div>
         </div>
       </footer>

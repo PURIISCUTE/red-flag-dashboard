@@ -65,7 +65,7 @@ export const ForensicRiskGlobe3D: React.FC<ForensicRiskGlobe3DProps> = ({
       { id: 'beneish', label: 'Beneish M-Score (Earnings Manipulation)', value: beneishRisk, metric: `${company.beneishMScore} (${company.beneishMScore > -1.78 ? 'Watch' : 'Safe'})`, secRule: 'ASC 250 / PCAOB AS 2401' },
       { id: 'altman', label: 'Altman Z-Score (Solvency & Capital Buffer)', value: altmanRisk, metric: `${company.altmanZScore} (${company.altmanZScore < 1.81 ? 'Distress' : 'Safe'})`, secRule: 'ASC 205-40 Going Concern' },
       { id: 'sloan', label: 'Sloan Accrual Ratio (Cash vs Paper Earnings)', value: sloanRisk, metric: `${(company.sloanAccrualRatio * 100).toFixed(1)}%`, secRule: 'ASC 230 Operating Cash Flow' },
-      { id: 'flags', label: 'Deterministic Critical Flag Severity', value: flagRisk, metric: `${critCount} Critical Anomaly Triggers`, secRule: '210-Matrix Sector Lens' },
+      { id: 'flags', label: 'Deterministic Critical Flag Severity', value: flagRisk, metric: `${critCount} Critical Anomaly Triggers`, secRule: '30 Red Flags Sector Lens' },
       { id: 'dso', label: 'Working Capital & DSO Velocity', value: dsoRisk, metric: `${dsoRisk > 60 ? 'Extended Collections' : 'Normal'}`, secRule: 'ASC 310 Receivables' },
       { id: 'rev', label: 'ASC 606 Revenue Recognition Quality', value: revRisk, metric: `Health ${company.forensicScore}/100`, secRule: 'ASC 606 Customer Contracts' },
       { id: 'debt', label: 'Balance Sheet Solvency & Unfunded Commitments', value: debtRisk, metric: `${debtRisk > 50 ? 'Elevated Commitments' : 'Investment Grade'}`, secRule: 'ASC 470 Debt & Credit' },
