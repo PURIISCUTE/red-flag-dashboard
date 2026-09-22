@@ -1,4 +1,4 @@
-import { CompanyForensicProfile, FinancialYearData, ForensicFlag, IndustryLens, StockChartPoint, FlagSeverity } from '../types';
+import { CompanyForensicProfile, FinancialYearData, ForensicFlag, IndustryLens, StockChartPoint, FlagSeverity, ThresholdType, ValueMode } from '../types';
 import { ALL_FLAG_DEFINITIONS } from './forensicFlags210';
 
 // Deterministic company profiles with audited historicals from FY22 to FY26 + TTM
@@ -1621,6 +1621,190 @@ function generateDeterministicFlags(profile: CompanyForensicProfile): ForensicFl
     const citationPrefix = def.secDisclosureCitation.split(':')[0] || '10-K Item 8';
     const cleanCitation = def.secDisclosureCitation.replace(/^10-K\s*/, '');
 
+    // Classify threshold type & document metadata according to SEC Input Sheet
+    const titleLower = def.title.toLowerCase();
+    const formulaLower = def.formula.toLowerCase();
+    const isWordInstruction = 
+      titleLower.includes('material weakness') ||
+      titleLower.includes('restatement') ||
+      titleLower.includes('going-concern') ||
+      titleLower.includes('gross-to-net') ||
+      titleLower.includes('gross vs net') ||
+      titleLower.includes('fcf margin trend') ||
+      titleLower.includes('margin vs inventory') ||
+      titleLower.includes('margin vs volume') ||
+      titleLower.includes('consistency') ||
+      titleLower.includes('overlap') ||
+      titleLower.includes('impairment absence') ||
+      titleLower.includes('cross-check') ||
+      formulaLower.includes('binary:');
+
+    const thresholdType: ThresholdType = isWordInstruction ? 'word_instruction' : 'numeric';
+
+    // Derive source document code from citation and title
+    let sourceDocCode = 'IS';
+    let sourceDocName = 'Income Statement';
+    let valueMode: ValueMode = 'TTM Required';
+    let greenThreshold = '< Normal';
+    let yellowThreshold = 'Elevated';
+    let redThreshold = 'Breach';
+    let whatItCatches = def.description;
+    let aiAuditInstruction: string | undefined = undefined;
+
+    if (titleLower.includes('material weakness') || def.code.includes('9A')) {
+      sourceDocCode = '9A';
+      sourceDocName = 'Item 9A — Controls & Procedures';
+      valueMode = 'Direct Source Document';
+      greenThreshold = 'None disclosed';
+      yellowThreshold = 'Remediated prior weakness';
+      redThreshold = 'Active weakness disclosed';
+      whatItCatches = 'Direct management admission of broken internal controls over financial reporting';
+      aiAuditInstruction = 'Told to AI Scanner: Treat word threshold as a qualitative filing inspection directive. Navigate to 10-K Item 9A. If clean and no internal control weakness is disclosed, mark "None disclosed" (Green Flag). If remediated prior weakness, mark Yellow. If an active material weakness is admitted, trigger Red.';
+    } else if (titleLower.includes('restatement') || def.code.includes('REST')) {
+      sourceDocCode = '8-K';
+      sourceDocName = 'Form 8-K Item 4.02 & Notes';
+      valueMode = 'Direct Source Document';
+      greenThreshold = 'None';
+      yellowThreshold = 'Minor/immaterial';
+      redThreshold = 'Material restatement';
+      whatItCatches = 'Company admits past financial statements were incorrect and required retroactive revision';
+      aiAuditInstruction = 'Told to AI Scanner: Scan Form 8-K Item 4.02 and Note 2 for prior-period restatements under ASC 250. If clean with no restatement filed, mark "None" (Green Flag). If immaterial reclassification, mark Yellow. If formal revision of past financial statements occurred, trigger Red.';
+    } else if (titleLower.includes('going-concern') || titleLower.includes('auditor')) {
+      sourceDocCode = 'Audit';
+      sourceDocName = "Auditor's Opinion Letter (PCAOB AS 2415)";
+      valueMode = 'Direct Source Document';
+      greenThreshold = 'None';
+      yellowThreshold = 'Qualified language';
+      redThreshold = 'Going concern doubt stated';
+      whatItCatches = "Auditor's explicit warning regarding substantial doubt over continuing operations";
+      aiAuditInstruction = 'Told to AI Scanner: Review independent auditor opinion. If standard unqualified report, mark "None" (Green Flag). If explanatory paragraph on covenant pressure without going-concern phrase, mark "Qualified language" (Yellow). If explicit going concern doubt stated, trigger Red.';
+    } else if (titleLower.includes('gross vs net') || titleLower.includes('gross-to-net')) {
+      sourceDocCode = 'N-Rev';
+      sourceDocName = 'Notes — Revenue Recognition (ASC 606)';
+      valueMode = 'Direct Source Document';
+      greenThreshold = 'No change disclosed';
+      yellowThreshold = 'Change disclosed, immaterial';
+      redThreshold = 'Change coincides with growth narrative';
+      whatItCatches = 'Accounting policy switch used to manufacture top-line growth with no real business change';
+      aiAuditInstruction = 'Told to AI Scanner: Verify if ASC 606 policy on gross vs net presentation changed. If no policy change disclosed, mark "No change disclosed" (Green Flag). If change is immaterial, mark Yellow. If change coincides with growth narrative in MD&A, trigger Red.';
+    } else if (titleLower.includes('fcf margin trend')) {
+      sourceDocCode = 'CF';
+      sourceDocName = 'Cash Flow Statement & Income Statement';
+      valueMode = 'TTM Required';
+      greenThreshold = 'Stable/rising';
+      yellowThreshold = 'Mild decline';
+      redThreshold = 'Sharp decline';
+      whatItCatches = "Deteriorating true cash generation despite reported 'profitable' P&L";
+      aiAuditInstruction = 'Told to AI Scanner: Calculate multi-year trajectory of (CFO - CapEx)/Revenue over TTM. If stable or expanding, mark "Stable/rising" (Green Flag). If drop of 1-3pp, mark "Mild decline" (Yellow). If sharp drop > 5pp or negative inflection, trigger Red.';
+    } else if (titleLower.includes('margin vs inventory') || titleLower.includes('margin vs volume')) {
+      sourceDocCode = 'IS';
+      sourceDocName = 'Income Statement & Balance Sheet';
+      valueMode = 'Dual (TTM + Direct)';
+      greenThreshold = 'Aligned';
+      yellowThreshold = 'Minor gap';
+      redThreshold = 'Inverse relationship';
+      whatItCatches = "Gross margin reported as 'improving' while inventory/costs quietly balloon";
+      aiAuditInstruction = 'Told to AI Scanner: Compare direction of gross margin change against inventory/volume growth. If aligned in expected business correlation, mark "Aligned" (Green Flag). If inverse relationship appears, trigger Red.';
+    } else if (titleLower.includes('impairment absence')) {
+      sourceDocCode = 'N-GW';
+      sourceDocName = 'Notes — Goodwill & Intangibles (ASC 350)';
+      valueMode = 'Direct Source Document';
+      greenThreshold = 'No impairment needed';
+      yellowThreshold = 'Watch-list';
+      redThreshold = 'Impairment overdue';
+      whatItCatches = 'Overstated goodwill not being written down despite deteriorating segment fundamentals';
+      aiAuditInstruction = 'Told to AI Scanner: Cross-check Note N-GW carrying balances against reporting segment margin drops. If fundamentals healthy, mark "No impairment needed" (Green Flag). If segment in chronic decline with zero write-down, mark "Impairment overdue" (Red).';
+    } else if (titleLower.includes('lease') || titleLower.includes('rent')) {
+      sourceDocCode = 'N-Lease';
+      sourceDocName = 'Notes — Leases (ASC 842)';
+      valueMode = 'Direct Source Document';
+      greenThreshold = '< 8% YoY';
+      yellowThreshold = '8–20% YoY';
+      redThreshold = '> 20% YoY';
+      whatItCatches = 'Store and facility expansion lease commitments hidden off traditional debt metrics';
+    } else if (titleLower.includes('inventory') || titleLower.includes('dio')) {
+      sourceDocCode = 'BS';
+      sourceDocName = 'Balance Sheet & Note N-Inv';
+      valueMode = 'Dual (TTM + Direct)';
+      greenThreshold = '< 5 days Δ';
+      yellowThreshold = '5–12 days Δ';
+      redThreshold = '> 12 days Δ';
+      whatItCatches = 'Inventory build-up suggesting channel stuffing, dead stock, or obsolescence hiding';
+    } else if (titleLower.includes('dso') || titleLower.includes('receivable')) {
+      sourceDocCode = 'BS';
+      sourceDocName = 'Balance Sheet & Note N-Rev';
+      valueMode = 'Dual (TTM + Direct)';
+      greenThreshold = '< 3 days Δ';
+      yellowThreshold = '3–8 days Δ';
+      redThreshold = '> 8 days Δ';
+      whatItCatches = 'Rising collection days signaling premature revenue recognition or uncollected sales';
+    } else if (titleLower.includes('cash flow') || titleLower.includes('cfo')) {
+      sourceDocCode = 'CF';
+      sourceDocName = 'Cash Flow Statement';
+      valueMode = 'TTM Required';
+      greenThreshold = '> 0% Δ';
+      yellowThreshold = '-5% to 0% Δ';
+      redThreshold = '< -5% Δ';
+      whatItCatches = 'Revenue booked without cash backing it (accrual divergence)';
+    } else if (titleLower.includes('sbc') || titleLower.includes('stock-based')) {
+      sourceDocCode = 'N-SBC';
+      sourceDocName = 'Notes — Stock-Based Compensation';
+      valueMode = 'TTM Required';
+      greenThreshold = '< 5% of Rev';
+      yellowThreshold = '5–12% of Rev';
+      redThreshold = '> 12% of Rev';
+      whatItCatches = "Excessive non-cash comp used to flatter 'adjusted' profitability while diluting shares";
+    } else if (titleLower.includes('tax')) {
+      sourceDocCode = 'N-Tax';
+      sourceDocName = 'Notes — Income Tax';
+      valueMode = 'Direct Source Document';
+      greenThreshold = '< 2% Δ';
+      yellowThreshold = '2–5% Δ';
+      redThreshold = '> 5% Δ';
+      whatItCatches = 'Tax reserve releases used to artificially hit quarterly EPS targets';
+    } else if (titleLower.includes('related-party')) {
+      sourceDocCode = 'N-RP';
+      sourceDocName = 'Notes — Related Party Transactions (ASC 850)';
+      valueMode = 'Direct Source Document';
+      greenThreshold = '< 0.5% of Rev';
+      yellowThreshold = '0.5–2% of Rev';
+      redThreshold = '> 2% of Rev';
+      whatItCatches = 'Self-dealing risk and transfer pricing distortions disclosed in footnote disclosures';
+    } else if (titleLower.includes('concentration')) {
+      sourceDocCode = 'Item1A';
+      sourceDocName = 'Item 1A — Risk Factors & Note N-Seg';
+      valueMode = 'Direct Source Document';
+      greenThreshold = 'None disclosed';
+      yellowThreshold = 'Disclosed, diversifying';
+      redThreshold = 'Disclosed, rising';
+      whatItCatches = 'Dependency risk on one hyperscaler, customer, or partner where loss sinks results';
+      aiAuditInstruction = 'Told to AI Scanner: Inspect Item 1A and Note N-Seg. If no customer exceeds 10% of revenue, mark "None disclosed" (Green Flag). If diversifying, mark Yellow. If rising concentration, mark Red.';
+    } else if (titleLower.includes('beneish')) {
+      sourceDocCode = 'IS';
+      sourceDocName = 'Income Statement / Balance Sheet / Cash Flow';
+      valueMode = 'Dual (TTM + Direct)';
+      greenThreshold = '< -2.22';
+      yellowThreshold = '-2.22 to -1.78';
+      redThreshold = '> -1.78';
+      whatItCatches = 'Statistically validated 8-variable earnings manipulation probability';
+    } else if (titleLower.includes('altman')) {
+      sourceDocCode = 'BS';
+      sourceDocName = 'Balance Sheet / Income Statement / Yahoo Finance';
+      valueMode = 'Dual (TTM + Direct)';
+      greenThreshold = '> 2.99 Safe';
+      yellowThreshold = '1.81–2.99 Gray';
+      redThreshold = '< 1.81 Distress';
+      whatItCatches = 'Solvency buffer and corporate bankruptcy distress risk';
+    } else {
+      sourceDocCode = 'IS';
+      sourceDocName = 'Income Statement (10-K Item 8)';
+      valueMode = 'TTM Required';
+      greenThreshold = 'Peer Median P50';
+      yellowThreshold = '+1.5σ Deviation';
+      redThreshold = '+3.0σ Deviation';
+      whatItCatches = 'Disproportionate accounting growth rate divergence versus audited peer median';
+    }
+
     const year1Stat = {
       year: 'Year 1 (FY23)',
       fiscalPeriod: 'FY23 10-K Audited Filing',
@@ -1690,7 +1874,16 @@ function generateDeterministicFlags(profile: CompanyForensicProfile): ForensicFl
       year2Stat,
       year3Stat,
       dataSource: def.dataSource,
-      riskExplanation: def.riskExplanation
+      riskExplanation: def.riskExplanation,
+      thresholdType,
+      greenThreshold,
+      yellowThreshold,
+      redThreshold,
+      whatItCatches,
+      sourceDocCode,
+      sourceDocName,
+      valueMode,
+      aiAuditInstruction
     };
   });
 }

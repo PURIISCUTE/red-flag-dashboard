@@ -11,6 +11,20 @@ export type FlagSeverity = 'Critical Anomaly' | 'Warning' | 'Healthy';
 
 export type DataSourcePriority = 'SEC EDGAR (P1)' | 'Forensic Rule (P2)' | 'Yahoo Finance (P3)' | 'Kaggle Benchmark (P4)';
 
+export type ThresholdType = 'numeric' | 'word_instruction';
+
+export type ValueMode = 'TTM Required' | 'Direct Source Document' | 'Dual (TTM + Direct)';
+
+export interface SourceDocumentEntry {
+  code: string;
+  name: string;
+  contains: string;
+  typicalLocation: string;
+  valueMode: ValueMode;
+  ttmNotes: string;
+  relevantSectors: string;
+}
+
 export interface FlagYearStat {
   year: string;
   fiscalPeriod: string;
@@ -36,6 +50,15 @@ export interface ForensicFlag {
   status: FlagSeverity;
   scoreImpact: number; // deduction if failed
   currentValue: string;
+  thresholdType?: ThresholdType;
+  greenThreshold?: string;
+  yellowThreshold?: string;
+  redThreshold?: string;
+  whatItCatches?: string;
+  sourceDocCode?: string;
+  sourceDocName?: string;
+  valueMode?: ValueMode;
+  aiAuditInstruction?: string;
   historicalTrend: {
     fy22: string;
     fy23: string;

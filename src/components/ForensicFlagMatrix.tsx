@@ -12,15 +12,23 @@ import {
   Plus, 
   FileText,
   Layers,
-  Scale
+  Scale,
+  Bot,
+  FileSpreadsheet,
+  CheckCircle2,
+  Clock,
+  Database
 } from 'lucide-react';
 import { 
   ForensicFlag, 
   IndustryLens, 
   FlagSeverity, 
   CompanyForensicProfile, 
-  InvestigationItem 
+  InvestigationItem,
+  ThresholdType,
+  ValueMode
 } from '../types';
+import { InputSheetModal } from './InputSheetModal';
 
 interface ForensicFlagMatrixProps {
   company: CompanyForensicProfile;
@@ -36,8 +44,10 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
 }) => {
   const [selectedLens, setSelectedLens] = useState<IndustryLens | 'ALL'>(company.lens);
   const [severityFilter, setSeverityFilter] = useState<FlagSeverity | 'ALL'>('ALL');
+  const [thresholdTypeFilter, setThresholdTypeFilter] = useState<'ALL' | 'WORD_INSTRUCTION' | 'NUMERIC'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFlag, setActiveFlag] = useState<ForensicFlag | null>(null);
+  const [isInputSheetOpen, setIsInputSheetOpen] = useState(false);
 
   const lenses: (IndustryLens | 'ALL')[] = [
     'ALL',
@@ -57,18 +67,28 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
   const filteredFlags = evaluatedFlags.filter((flag) => {
     const matchesLens = selectedLens === 'ALL' || flag.lens === selectedLens;
     const matchesSeverity = severityFilter === 'ALL' || flag.status === severityFilter;
+    const matchesThresholdType = 
+      thresholdTypeFilter === 'ALL' 
+        ? true 
+        : thresholdTypeFilter === 'WORD_INSTRUCTION' 
+        ? flag.thresholdType === 'word_instruction'
+        : flag.thresholdType !== 'word_instruction';
+
     const matchesSearch = 
       flag.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       flag.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       flag.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (flag.sourceDocCode && flag.sourceDocCode.toLowerCase().includes(searchQuery.toLowerCase())) ||
       flag.secDisclosureCitation.toLowerCase().includes(searchQuery.toLowerCase());
 
-    return matchesLens && matchesSeverity && matchesSearch;
+    return matchesLens && matchesSeverity && matchesThresholdType && matchesSearch;
   });
 
   const criticalCount = evaluatedFlags.filter((f) => f.status === 'Critical Anomaly').length;
   const warningCount = evaluatedFlags.filter((f) => f.status === 'Warning').length;
   const healthyCount = evaluatedFlags.filter((f) => f.status === 'Healthy').length;
+  const wordInstructionCount = evaluatedFlags.filter((f) => f.thresholdType === 'word_instruction').length;
+  const numericCount = evaluatedFlags.length - wordInstructionCount;
 
   return (
     <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl shadow-sm space-y-4">
@@ -91,51 +111,63 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
           </div>
         </div>
 
-        {/* Severity Quick Filters */}
-        <div className="flex items-center gap-1.5 text-xs">
+        {/* Severity Quick Filters & Ground Truth Input Sheet */}
+        <div className="flex flex-wrap items-center gap-2 text-xs">
           <button
-            onClick={() => setSeverityFilter('ALL')}
-            className={`px-2.5 py-1 rounded-lg transition-all font-medium ${
-              severityFilter === 'ALL'
-                ? 'bg-slate-800 text-white'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
+            onClick={() => setIsInputSheetOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1 bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-500/40 rounded-lg font-semibold transition-all shadow-sm"
           >
-            All ({evaluatedFlags.length})
+            <FileSpreadsheet className="h-3.5 w-3.5 text-red-400" />
+            <span>SEC Input Sheet & TTM Guide</span>
           </button>
-          <button
-            onClick={() => setSeverityFilter('Critical Anomaly')}
-            className={`px-2.5 py-1 rounded-lg transition-all font-medium flex items-center gap-1.5 ${
-              severityFilter === 'Critical Anomaly'
-                ? 'bg-red-500/20 text-red-400 border border-red-500/40'
-                : 'text-slate-400 hover:text-red-400'
-            }`}
-          >
-            <span className="h-2 w-2 rounded-full bg-red-400"></span>
-            <span>Critical ({criticalCount})</span>
-          </button>
-          <button
-            onClick={() => setSeverityFilter('Warning')}
-            className={`px-2.5 py-1 rounded-lg transition-all font-medium flex items-center gap-1.5 ${
-              severityFilter === 'Warning'
-                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                : 'text-slate-400 hover:text-amber-400'
-            }`}
-          >
-            <span className="h-2 w-2 rounded-full bg-amber-400"></span>
-            <span>Warning ({warningCount})</span>
-          </button>
-          <button
-            onClick={() => setSeverityFilter('Healthy')}
-            className={`px-2.5 py-1 rounded-lg transition-all font-medium flex items-center gap-1.5 ${
-              severityFilter === 'Healthy'
-                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                : 'text-slate-400 hover:text-emerald-400'
-            }`}
-          >
-            <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
-            <span>Clean ({healthyCount})</span>
-          </button>
+
+          <div className="h-4 w-[1px] bg-slate-800 hidden sm:block"></div>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setSeverityFilter('ALL')}
+              className={`px-2.5 py-1 rounded-lg transition-all font-medium ${
+                severityFilter === 'ALL'
+                  ? 'bg-slate-800 text-white'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              All ({evaluatedFlags.length})
+            </button>
+            <button
+              onClick={() => setSeverityFilter('Critical Anomaly')}
+              className={`px-2.5 py-1 rounded-lg transition-all font-medium flex items-center gap-1.5 ${
+                severityFilter === 'Critical Anomaly'
+                  ? 'bg-red-500/20 text-red-400 border border-red-500/40'
+                  : 'text-slate-400 hover:text-red-400'
+              }`}
+            >
+              <span className="h-2 w-2 rounded-full bg-red-400"></span>
+              <span>Critical ({criticalCount})</span>
+            </button>
+            <button
+              onClick={() => setSeverityFilter('Warning')}
+              className={`px-2.5 py-1 rounded-lg transition-all font-medium flex items-center gap-1.5 ${
+                severityFilter === 'Warning'
+                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                  : 'text-slate-400 hover:text-amber-400'
+              }`}
+            >
+              <span className="h-2 w-2 rounded-full bg-amber-400"></span>
+              <span>Warning ({warningCount})</span>
+            </button>
+            <button
+              onClick={() => setSeverityFilter('Healthy')}
+              className={`px-2.5 py-1 rounded-lg transition-all font-medium flex items-center gap-1.5 ${
+                severityFilter === 'Healthy'
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                  : 'text-slate-400 hover:text-emerald-400'
+              }`}
+            >
+              <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
+              <span>Clean ({healthyCount})</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -154,6 +186,49 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
             {lens} {lens !== 'ALL' && '(30)'}
           </button>
         ))}
+      </div>
+
+      {/* Threshold Type Sub-filter (Word Instruction vs Numeric) */}
+      <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 rounded-lg bg-slate-950/70 border border-slate-800/80 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="text-slate-400 text-[11px] font-medium">Evaluation Mode:</span>
+          <button
+            onClick={() => setThresholdTypeFilter('ALL')}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+              thresholdTypeFilter === 'ALL'
+                ? 'bg-slate-800 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            All 30 Flags
+          </button>
+          <button
+            onClick={() => setThresholdTypeFilter('WORD_INSTRUCTION')}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+              thresholdTypeFilter === 'WORD_INSTRUCTION'
+                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm'
+                : 'text-slate-400 hover:text-purple-300'
+            }`}
+          >
+            <Bot className="h-3 w-3 text-purple-400" />
+            <span>Word Instructions ({wordInstructionCount})</span>
+          </button>
+          <button
+            onClick={() => setThresholdTypeFilter('NUMERIC')}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+              thresholdTypeFilter === 'NUMERIC'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                : 'text-slate-400 hover:text-cyan-300'
+            }`}
+          >
+            Numeric Ratios ({numericCount})
+          </button>
+        </div>
+
+        <div className="text-[11px] text-slate-400 flex items-center gap-1">
+          <Info className="h-3 w-3 text-amber-400 shrink-0" />
+          <span>Word thresholds are qualitative audit directives where <strong className="text-emerald-400">no disclosure = clean Green Flag</strong>.</span>
+        </div>
       </div>
 
       {/* Search and Table Count */}
@@ -179,12 +254,12 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
           <thead>
             <tr className="border-b border-slate-800 bg-slate-950/80 text-slate-400 font-medium text-[11px]">
               <th className="py-2.5 px-3">Code</th>
-              <th className="py-2.5 px-3">Lens</th>
+              <th className="py-2.5 px-3">Source Doc</th>
+              <th className="py-2.5 px-3">Type</th>
               <th className="py-2.5 px-3">Category</th>
               <th className="py-2.5 px-3">Observation</th>
               <th className="py-2.5 px-3">Status</th>
-              <th className="py-2.5 px-3 text-right">TTM Reading</th>
-              <th className="py-2.5 px-3">Data Priority</th>
+              <th className="py-2.5 px-3 text-right">TTM / Value</th>
               <th className="py-2.5 px-3 text-center">Action</th>
             </tr>
           </thead>
@@ -193,6 +268,7 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
               const isInvestigated = investigationItems.some(
                 (item) => item.flagCode === flag.code && item.ticker === company.ticker
               );
+              const isWord = flag.thresholdType === 'word_instruction';
 
               return (
                 <tr
@@ -203,14 +279,44 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
                   <td className="py-2.5 px-3 font-mono font-semibold text-white">
                     {flag.code}
                   </td>
-                  <td className="py-2.5 px-3 text-slate-400">
-                    {flag.lens}
+                  <td className="py-2.5 px-3 font-mono">
+                    <span 
+                      className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/30 text-[10px] font-bold"
+                      title={flag.sourceDocName || 'SEC Source Document'}
+                    >
+                      {flag.sourceDocCode || 'IS'}
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-3">
+                    {isWord ? (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-purple-500/15 text-purple-300 border border-purple-500/30 whitespace-nowrap">
+                        <Bot className="h-2.5 w-2.5 text-purple-400" />
+                        Word Instr.
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">
+                        Numeric
+                      </span>
+                    )}
                   </td>
                   <td className="py-2.5 px-3 text-slate-300">
                     {flag.category}
                   </td>
                   <td className="py-2.5 px-3 text-slate-200 font-medium max-w-xs truncate">
-                    {flag.title}
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate">{flag.title}</span>
+                      {flag.valueMode && (
+                        <span className={`text-[9px] px-1 py-0.2 rounded font-mono shrink-0 border ${
+                          flag.valueMode === 'TTM Required' 
+                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                            : flag.valueMode === 'Direct Source Document'
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
+                        }`}>
+                          {flag.valueMode === 'TTM Required' ? 'TTM' : flag.valueMode === 'Direct Source Document' ? 'Direct' : 'Dual'}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="py-2.5 px-3">
                     <span
@@ -237,9 +343,6 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
                   <td className="py-2.5 px-3 text-right font-mono font-medium text-slate-200">
                     {flag.currentValue}
                   </td>
-                  <td className="py-2.5 px-3 text-slate-400 text-[11px]">
-                    {flag.dataSource}
-                  </td>
                   <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => onToggleInvestigation && onToggleInvestigation(flag)}
@@ -248,9 +351,9 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
                           ? 'text-red-400 hover:text-red-300'
                           : 'text-slate-500 hover:text-slate-300'
                       }`}
-                      title={isInvestigated ? 'Remove from investigation queue' : 'Add to investigation queue'}
+                      title={isInvestigated ? 'In Investigation Queue' : 'Add to Investigation Queue'}
                     >
-                      <Bookmark className={`h-4 w-4 ${isInvestigated ? 'fill-current' : ''}`} />
+                      {isInvestigated ? <Bookmark className="h-4 w-4 fill-red-400" /> : <Plus className="h-4 w-4" />}
                     </button>
                   </td>
                 </tr>
@@ -293,6 +396,88 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
             </div>
 
             <div className="space-y-3 text-xs">
+              {/* Ground Truth Source Document & TTM Mode Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-slate-950/80 border border-slate-800 text-[11px]">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400 font-medium">Source Document:</span>
+                  <span className="px-2 py-0.5 rounded font-mono font-bold bg-red-500/15 text-red-400 border border-red-500/30">
+                    [{activeFlag.sourceDocCode || 'IS'}]
+                  </span>
+                  <span className="text-slate-200 font-medium">
+                    {activeFlag.sourceDocName || 'Income Statement'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400 font-medium">Value Mode:</span>
+                  <span className={`px-2 py-0.5 rounded-full font-mono font-medium border ${
+                    activeFlag.valueMode === 'TTM Required'
+                      ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                      : activeFlag.valueMode === 'Direct Source Document'
+                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                      : 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30'
+                  }`}>
+                    {activeFlag.valueMode || 'TTM Required'}
+                  </span>
+                </div>
+              </div>
+
+              {/* AI Agent Directive Box for Word-Based Thresholds */}
+              {activeFlag.thresholdType === 'word_instruction' ? (
+                <div className="p-3.5 rounded-xl border border-purple-500/40 bg-purple-950/20 space-y-2.5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-purple-300 font-bold text-xs">
+                      <Bot className="h-4 w-4 text-purple-400" />
+                      <span>AI Agent Directive: Qualitative Word-Based Threshold</span>
+                    </div>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                      DISCLOSURE VERIFICATION
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-slate-300 leading-relaxed font-sans">
+                    {activeFlag.aiAuditInstruction || 
+                     'Told to AI Scanner: Treat word threshold as a qualitative filing inspection directive. If no adverse item or weakness is disclosed in the SEC filing, evaluate as a clean Green Flag. If adverse conditions are disclosed, trigger Red Flag.'}
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[10px] font-mono">
+                    <div className="p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-300">
+                      <span className="text-emerald-400 font-bold block mb-0.5">GREEN FLAG</span>
+                      <span>{activeFlag.greenThreshold || 'None disclosed'}</span>
+                    </div>
+                    <div className="p-2 rounded bg-amber-950/40 border border-amber-500/30 text-amber-300">
+                      <span className="text-amber-400 font-bold block mb-0.5">YELLOW WATCH</span>
+                      <span>{activeFlag.yellowThreshold || 'Remediated / minor'}</span>
+                    </div>
+                    <div className="p-2 rounded bg-red-950/40 border border-red-500/30 text-red-300">
+                      <span className="text-red-400 font-bold block mb-0.5">RED CRITICAL</span>
+                      <span>{activeFlag.redThreshold || 'Active weakness disclosed'}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 rounded-lg border border-slate-800 bg-slate-950/60 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-400 font-medium">Quantitative Threshold Standards:</span>
+                    <span className="text-[10px] font-mono text-cyan-400">AUDITED COHORT BENCHMARK</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-[10px] font-mono">
+                    <div className="p-1.5 rounded bg-emerald-950/20 border border-emerald-500/20 text-emerald-300">
+                      <span className="text-emerald-400 font-bold block">Safe Zone:</span>
+                      {activeFlag.greenThreshold || '< P50 Median'}
+                    </div>
+                    <div className="p-1.5 rounded bg-amber-950/20 border border-amber-500/20 text-amber-300">
+                      <span className="text-amber-400 font-bold block">Warning:</span>
+                      {activeFlag.yellowThreshold || '+1.5σ Deviation'}
+                    </div>
+                    <div className="p-1.5 rounded bg-red-950/20 border border-red-500/20 text-red-300">
+                      <span className="text-red-400 font-bold block">Anomaly:</span>
+                      {activeFlag.redThreshold || '+3.0σ Deviation'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800 space-y-1">
                 <span className="text-slate-400 text-[11px] block font-medium">Detection Rule &amp; Formula:</span>
                 <code className="font-mono text-xs text-slate-200 block break-words">
@@ -503,6 +688,12 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
           </div>
         </div>
       )}
+
+      {/* SEC Ground Truth Input Sheet & TTM Mapping Modal */}
+      <InputSheetModal
+        isOpen={isInputSheetOpen}
+        onClose={() => setIsInputSheetOpen(false)}
+      />
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { ForensicFlag, IndustryLens, FlagSeverity, DataSourcePriority } from '../types';
+import { ForensicFlag, IndustryLens, FlagSeverity, DataSourcePriority, ThresholdType, ValueMode } from '../types';
 
 export interface FlagDefinition {
   code: string;
@@ -13,6 +13,15 @@ export interface FlagDefinition {
   scoreImpact: number;
   dataSource: DataSourcePriority;
   riskExplanation: string;
+  thresholdType?: ThresholdType;
+  greenThreshold?: string;
+  yellowThreshold?: string;
+  redThreshold?: string;
+  whatItCatches?: string;
+  sourceDocCode?: string;
+  sourceDocName?: string;
+  valueMode?: ValueMode;
+  aiAuditInstruction?: string;
 }
 
 // 210 Forensic Flag Definitions across 7 Lenses (30 flags each)

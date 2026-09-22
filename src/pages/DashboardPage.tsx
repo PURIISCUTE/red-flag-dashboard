@@ -28,10 +28,12 @@ import {
   FileCheck2, 
   Layers,
   Sparkles,
-  Rotate3d
+  Rotate3d,
+  FileSpreadsheet
 } from 'lucide-react';
 import { ForensicRiskGlobe3D } from '../components/ForensicRiskGlobe3D';
 import { Card3D } from '../components/Card3D';
+import { InputSheetModal } from '../components/InputSheetModal';
 
 interface DashboardPageProps {
   currentTicker: string;
@@ -53,6 +55,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [isPriorityModalOpen, setIsPriorityModalOpen] = useState<boolean>(false);
   const [isLiveScanOpen, setIsLiveScanOpen] = useState<boolean>(false);
   const [isInvestigationQueueOpen, setIsInvestigationQueueOpen] = useState<boolean>(false);
+  const [isInputSheetOpen, setIsInputSheetOpen] = useState<boolean>(false);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
   const [notification, setNotification] = useState<string | null>(null);
   const [investigationItems, setInvestigationItems] = useState<InvestigationItem[]>([]);
@@ -339,8 +342,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
           </div>
 
-          {/* Quick Segment Tab Pills (for 1-click convenience) */}
-          <div className="flex flex-wrap items-center gap-1">
+          {/* Quick Segment Tab Pills (for 1-click convenience) & Input Sheet Button */}
+          <div className="flex flex-wrap items-center gap-1.5">
             {moduleList.map((mod) => (
               <button
                 key={mod.id}
@@ -355,6 +358,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <span className="hidden md:inline">{mod.label.split(' ')[0]}</span>
               </button>
             ))}
+
+            <div className="h-4 w-[1px] bg-slate-800 hidden sm:block mx-1"></div>
+
+            <button
+              onClick={() => setIsInputSheetOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-500/40 rounded-lg text-xs font-semibold transition-all shadow-sm"
+              title="Open SEC Source Document Registry & TTM Value Requirements"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5 text-red-400" />
+              <span>Input Sheet (27 Docs)</span>
+            </button>
           </div>
         </div>
 
@@ -534,6 +548,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         onRemoveItem={handleRemoveInvestigationItem}
         onClearAll={handleClearInvestigationQueue}
         onUpdateNote={handleUpdateInvestigationNote}
+      />
+
+      <InputSheetModal
+        isOpen={isInputSheetOpen}
+        onClose={() => setIsInputSheetOpen(false)}
       />
 
       {/* Toned Down, Clean Footer */}
