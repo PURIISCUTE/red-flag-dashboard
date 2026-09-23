@@ -46,7 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [searchInput, setSearchInput] = useState('');
   const [searchError, setSearchError] = useState<string | null>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const popularTickers = ['AAPL', 'NVDA', 'MSFT', 'AMZN', 'PYPL', 'JPM', 'TSLA'];
+  const popularTickers = ['AAPL', 'NVDA', 'MSFT', 'PLTR', 'TSLA', 'AMD', 'COIN'];
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +54,7 @@ export const Header: React.FC<HeaderProps> = ({
     if (!raw) return;
 
     if (!isValidStockTicker(raw)) {
-      setSearchError(`"${raw}" is not a recognized real stock ticker. Only real listed tickers are permitted (e.g. AAPL, NVDA, TSLA, MSFT, GOOGL, AMZN, META, PYPL, JPM).`);
+      setSearchError(`"${raw}" is not a valid US stock ticker format. Enter any US ticker listed on Yahoo Finance, NYSE, or NASDAQ (e.g. AAPL, NVDA, PLTR, TSLA, AMD, COIN).`);
       setTimeout(() => setSearchError(null), 5000);
       return;
     }
@@ -74,18 +74,18 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-slate-300 font-medium">SEC EDGAR API: Connected</span>
           </div>
           <span className="text-slate-700">|</span>
-          <span className="text-slate-400 hidden sm:inline">30 Red Flags Heuristics Active</span>
+          <span className="text-slate-400 hidden sm:inline">All US Stock Tickers Supported</span>
           <span className="text-slate-700 hidden sm:inline">|</span>
-          <span className="text-slate-400 hidden md:inline">Real-time Yahoo TTM Feeds</span>
+          <span className="text-slate-400 hidden md:inline">Yahoo Finance TTM Telemetry</span>
         </div>
 
         <div className="flex items-center gap-3">
           <button
             onClick={onOpenPriorityModal}
-            className="hover:text-slate-200 flex items-center gap-1 text-slate-400 transition-colors"
+            className="hover:text-red-400 flex items-center gap-1.5 text-slate-300 transition-colors font-medium cursor-pointer"
           >
-            <Layers className="h-3.5 w-3.5 text-indigo-400" />
-            <span className="hidden sm:inline">Data Priority</span>
+            <Layers className="h-3.5 w-3.5 text-red-500" />
+            <span>Data Sourcing &amp; Pipeline Architecture</span>
           </button>
           <span className="text-slate-700">|</span>
           <button
@@ -106,7 +106,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Ticker Search & Quick Switcher */}
         <div className="flex items-center gap-2 flex-1 max-w-lg">
           <div className="hidden lg:flex items-center gap-1 bg-slate-900/90 p-1 border border-slate-800 rounded-lg">
-            {popularTickers.slice(0, 5).map((t) => (
+            {popularTickers.slice(0, 6).map((t) => (
               <button
                 key={t}
                 onClick={() => onSelectCompany(t)}
@@ -130,7 +130,7 @@ export const Header: React.FC<HeaderProps> = ({
                   setSearchInput(e.target.value);
                   if (searchError) setSearchError(null);
                 }}
-                placeholder="Search real stock ticker (e.g. AAPL, NVDA, TSLA)..."
+                placeholder="Search ANY US stock ticker on Yahoo Finance (e.g. AAPL, PLTR, AMD)..."
                 className="w-full bg-slate-900/90 border border-slate-800 focus:border-red-500/60 focus:ring-1 focus:ring-red-500/20 px-8 py-1.5 text-xs text-slate-200 placeholder-slate-500 rounded-lg outline-none transition-all font-sans"
               />
               <Search className="h-3.5 w-3.5 text-slate-500 absolute left-2.5 top-2.5" />

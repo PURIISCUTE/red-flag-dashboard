@@ -256,9 +256,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   {companyProfile.lens} Lens
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {companyProfile.sector} • FY22–FY26 Audited 10-K &amp; TTM Feeds
-              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <p className="text-xs text-slate-400">
+                  {companyProfile.sector} • FY22–FY26 Audited 10-K &amp; TTM Feeds
+                </p>
+                <span className="text-slate-700 hidden sm:inline">•</span>
+                <button
+                  onClick={() => setIsPriorityModalOpen(true)}
+                  className="text-[11px] text-amber-400/90 hover:text-amber-300 underline underline-offset-2 flex items-center gap-1 cursor-pointer"
+                  title="Click to view data sourcing architecture and live pipeline details"
+                >
+                  <span>Data Sourcing: SEC EDGAR + Yahoo Finance API</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -532,6 +542,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       <DataSourcePriorityModal
         isOpen={isPriorityModalOpen}
         onClose={() => setIsPriorityModalOpen(false)}
+        currentTicker={companyProfile.ticker}
       />
 
       <LiveSecScanModal

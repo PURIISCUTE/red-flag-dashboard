@@ -35,6 +35,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onNavigateToSignup
 }) => {
   const [heroTicker, setHeroTicker] = useState<'AAPL' | 'NVDA' | 'TSLA' | 'PYPL'>('AAPL');
+  const [heroTickerInput, setHeroTickerInput] = useState('PLTR');
   const [activeLensTab, setActiveLensTab] = useState<IndustryLens>('SaaS');
   const [heroDisplayMode, setHeroDisplayMode] = useState<'3d' | 'preview'>('3d');
 
@@ -157,30 +158,61 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center gap-3 pt-3">
-                <button
-                  onClick={() => onNavigateToDashboard('AAPL')}
-                  className="flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-medium rounded-lg text-sm shadow-sm transition-all"
+              {/* Direct Ticker Search & Action Buttons */}
+              <div className="pt-2 space-y-3">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (heroTickerInput.trim()) {
+                      onNavigateToDashboard(heroTickerInput.trim().toUpperCase());
+                    }
+                  }}
+                  className="flex items-center gap-2 max-w-md bg-slate-900/90 border border-slate-700/80 p-1.5 rounded-xl shadow-lg focus-within:border-red-500/80 transition-all"
                 >
-                  <span>Launch Live Workspace</span>
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={onNavigateToSignup}
-                  className="px-5 py-3 bg-slate-900 hover:bg-slate-850 text-white border border-slate-800 rounded-lg text-sm font-medium transition-colors"
-                >
-                  Request Analyst Access
-                </button>
+                  <Search className="h-4 w-4 text-slate-400 ml-2 shrink-0" />
+                  <input
+                    type="text"
+                    value={heroTickerInput}
+                    onChange={(e) => setHeroTickerInput(e.target.value.toUpperCase())}
+                    placeholder="Enter ANY US Stock Ticker (e.g. PLTR, AMD, NVDA)..."
+                    className="flex-1 bg-transparent border-none outline-none text-xs font-mono text-white placeholder:text-slate-500 px-2 py-1.5"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-lg text-xs flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
+                  >
+                    <span>Audit Ticker</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </form>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={() => onNavigateToDashboard(heroTicker)}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg text-xs border border-slate-700 transition-all"
+                  >
+                    <span>Open Preview ({heroTicker})</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={onNavigateToSignup}
+                    className="px-5 py-2.5 bg-red-600/10 hover:bg-red-600/20 text-red-300 border border-red-500/30 rounded-lg text-xs font-medium transition-colors"
+                  >
+                    Create Analyst Account
+                  </button>
+                </div>
               </div>
 
               {/* Sector Switcher Quick Buttons */}
-              <div className="pt-2 flex items-center gap-2 text-xs text-slate-400">
-                <span>Try preview:</span>
-                {(['AAPL', 'NVDA', 'TSLA', 'PYPL'] as const).map((tk) => (
+              <div className="pt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                <span>Popular tickers:</span>
+                {(['AAPL', 'NVDA', 'TSLA', 'PLTR', 'AMD', 'COIN', 'MSFT'] as const).map((tk) => (
                   <button
                     key={tk}
-                    onClick={() => setHeroTicker(tk)}
+                    onClick={() => {
+                      setHeroTicker(tk as any);
+                      setHeroTickerInput(tk);
+                    }}
                     className={`px-2.5 py-1 rounded-md text-xs font-mono font-medium transition-all ${
                       heroTicker === tk
                         ? 'bg-red-500/20 text-red-400 border border-red-500/40'
