@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   ArrowRight, 
   CheckCircle2, 
@@ -15,10 +15,12 @@ import {
   Sparkles,
   ShieldAlert,
   Rotate3d,
-  Sliders
+  Sliders,
+  AlertCircle
 } from 'lucide-react';
 import { IndustryLens } from '../types';
 import { getDeterministicCompanyProfile } from '../data/companyData';
+import { isTickerInNyseOrNasdaq, searchNyseNasdaqCompanies, NyseNasdaqCompany } from '../data/nyseNasdaqRegistry';
 import { Logo } from '../components/Logo';
 import { Forensic3DScanner } from '../components/Forensic3DScanner';
 import { Card3D } from '../components/Card3D';
@@ -36,10 +38,41 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 }) => {
   const [heroTicker, setHeroTicker] = useState<'AAPL' | 'NVDA' | 'TSLA' | 'PYPL'>('AAPL');
   const [heroTickerInput, setHeroTickerInput] = useState('PLTR');
+  const [heroError, setHeroError] = useState<string | null>(null);
+  const [isHeroFocused, setIsHeroFocused] = useState(false);
   const [activeLensTab, setActiveLensTab] = useState<IndustryLens>('SaaS');
   const [heroDisplayMode, setHeroDisplayMode] = useState<'3d' | 'preview'>('3d');
 
   const heroProfile = getDeterministicCompanyProfile(heroTicker) || getDeterministicCompanyProfile('AAPL')!;
+
+  // Live autocomplete suggestions for landing hero search
+  const heroSuggestions: NyseNasdaqCompany[] = useMemo(() => {
+    if (!heroTickerInput.trim() || heroTickerInput.trim().length < 1) return [];
+    return searchNyseNasdaqCompanies(heroTickerInput.trim(), 5);
+  }, [heroTickerInput]);
+
+  const handleHeroSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const raw = heroTickerInput.trim().toUpperCase();
+    if (!raw) return;
+
+    if (!isTickerInNyseOrNasdaq(raw)) {
+      setHeroError(`Please use a valid ticker. "${raw}" was not found among NYSE or NASDAQ listed companies.`);
+      setTimeout(() => setHeroError(null), 5500);
+      return;
+    }
+
+    setHeroError(null);
+    setIsHeroFocused(false);
+    onNavigateToDashboard(raw);
+  };
+
+  const handleSelectHeroSuggestion = (ticker: string) => {
+    setHeroError(null);
+    setIsHeroFocused(false);
+    setHeroTickerInput(ticker);
+    onNavigateToDashboard(ticker);
+  };
 
   const lensExamples: Record<IndustryLens, { flags: string[]; formula: string; secCitation: string }> = {
     'SaaS': {
@@ -160,43 +193,97 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
               {/* Direct Ticker Search & Action Buttons */}
               <div className="pt-2 space-y-3">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (heroTickerInput.trim()) {
-                      onNavigateToDashboard(heroTickerInput.trim().toUpperCase());
-                    }
-                  }}
-                  className="flex items-center gap-2 max-w-md bg-slate-900/90 border border-slate-700/80 p-1.5 rounded-xl shadow-lg focus-within:border-red-500/80 transition-all"
-                >
-                  <Search className="h-4 w-4 text-slate-400 ml-2 shrink-0" />
-                  <input
-                    type="text"
-                    value={heroTickerInput}
-                    onChange={(e) => setHeroTickerInput(e.target.value.toUpperCase())}
-                    placeholder="Enter ANY US Stock Ticker (e.g. PLTR, AMD, NVDA)..."
-                    className="flex-1 bg-transparent border-none outline-none text-xs font-mono text-white placeholder:text-slate-500 px-2 py-1.5"
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-lg text-xs flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
+                <div className="relative max-w-md">
+                  <form
+                    onSubmit={handleHeroSubmit}
+                    className="flex items-center gap-2 bg-slate-900/90 border border-slate-700/80 p-1.5 rounded-xl shadow-lg focus-within:border-red-500/80 transition-all"
                   >
-                    <span>Audit Ticker</span>
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </button>
-                </form>
+                    <Search className="h-4 w-4 text-slate-400 ml-2 shrink-0" />
+                    <input
+                      type="text"
+                      value={heroTickerInput}
+                      onFocus={() => setIsHeroFocused(true)}
+                      onBlur={() => setTimeout(() => setIsHeroFocused(false), 250)}
+                      onChange={(e) => {
+                        setHeroTickerInput(e.target.value.toUpperCase());
+                        if (heroError) setHeroError(null);
+                      }}
+                      placeholder="Search NYSE & NASDAQ (e.g. AAPL, PLTR, AMD)..."
+                      className="flex-1 bg-transparent border-none outline-none text-xs font-mono text-white placeholder:text-slate-500 px-2 py-1.5"
+                    />
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-lg text-xs flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
+                    >
+                      <span>Audit Ticker</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
+                  </form>
+
+                  {/* Autocomplete Dropdown */}
+                  {isHeroFocused && heroSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900/98 backdrop-blur-md border border-slate-700/80 rounded-xl shadow-2xl z-50 overflow-hidden divide-y divide-slate-800/80 max-h-64 overflow-y-auto">
+                      <div className="px-3 py-1.5 bg-slate-950 text-[10px] uppercase font-semibold text-slate-400 tracking-wider flex items-center justify-between">
+                        <span>NYSE &amp; NASDAQ Companies</span>
+                        <span className="text-[10px] text-emerald-400 font-normal">SEC Verified</span>
+                      </div>
+                      {heroSuggestions.map((item) => (
+                        <button
+                          key={item.ticker}
+                          type="button"
+                          onMouseDown={() => handleSelectHeroSuggestion(item.ticker)}
+                          className="w-full px-3 py-2 text-left hover:bg-slate-800/90 flex items-center justify-between transition-colors group cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-mono font-bold text-xs text-white group-hover:text-red-400 transition-colors shrink-0">
+                              {item.ticker}
+                            </span>
+                            <span className="text-xs text-slate-300 truncate font-normal">
+                              {item.name}
+                            </span>
+                          </div>
+                          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-medium shrink-0 ml-2 ${
+                            item.exchange === 'NASDAQ'
+                              ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30'
+                              : 'bg-purple-500/10 text-purple-400 border border-purple-500/30'
+                          }`}>
+                            {item.exchange}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Error Notification */}
+                  {heroError && (
+                    <div className="absolute top-full left-0 right-0 mt-1.5 p-2.5 bg-red-950/95 border border-red-500/60 rounded-lg shadow-xl text-xs text-red-200 z-50 flex items-start gap-2 animate-fadeIn">
+                      <AlertCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <div className="font-semibold text-red-300">Invalid Stock Ticker</div>
+                        <div className="text-[11px] text-red-200/90 mt-0.5">{heroError}</div>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => setHeroError(null)}
+                        className="text-red-400 hover:text-white text-xs px-1 cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </div>
 
                 <div className="flex flex-wrap items-center gap-3">
                   <button
                     onClick={() => onNavigateToDashboard(heroTicker)}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg text-xs border border-slate-700 transition-all"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg text-xs border border-slate-700 transition-all cursor-pointer"
                   >
                     <span>Open Preview ({heroTicker})</span>
                     <ArrowRight className="h-3.5 w-3.5" />
                   </button>
                   <button
                     onClick={onNavigateToSignup}
-                    className="px-5 py-2.5 bg-red-600/10 hover:bg-red-600/20 text-red-300 border border-red-500/30 rounded-lg text-xs font-medium transition-colors"
+                    className="px-5 py-2.5 bg-red-600/10 hover:bg-red-600/20 text-red-300 border border-red-500/30 rounded-lg text-xs font-medium transition-colors cursor-pointer"
                   >
                     Create Analyst Account
                   </button>

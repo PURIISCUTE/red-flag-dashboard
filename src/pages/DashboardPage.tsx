@@ -11,6 +11,7 @@ import { StressTestSimulator } from '../components/StressTestSimulator';
 import { Footer } from '../components/Footer';
 import { getDeterministicCompanyProfile, isValidStockTicker } from '../data/companyData';
 import { generateAuditPdf } from '../services/pdfGenerator';
+import { fetchLiveYahooQuote, LiveYahooQuote } from '../services/yahooFinanceService';
 import { 
   UserSession, 
   InvestigationItem, 
@@ -64,6 +65,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [notification, setNotification] = useState<string | null>(null);
   const [investigationItems, setInvestigationItems] = useState<InvestigationItem[]>([]);
   const [lastScanTime, setLastScanTime] = useState<string>('Just now');
+  const [liveQuote, setLiveQuote] = useState<LiveYahooQuote | null>(null);
   
   // Interactive View Selector
   const [activeModule, setActiveModule] = useState<ActiveViewModule>('overview');
@@ -75,6 +77,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     if (profile) return profile;
     return getDeterministicCompanyProfile('AAPL')!;
   }, [currentTicker]);
+
+  // Synchronize live Yahoo Finance Telemetry
+  React.useEffect(() => {
+    let active = true;
+    fetchLiveYahooQuote(companyProfile.ticker, companyProfile.stockPrice).then((quote) => {
+      if (active) {
+        setLiveQuote(quote);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [companyProfile.ticker, companyProfile.stockPrice]);
 
   // Automated welcome toast for logged-in user
   React.useEffect(() => {
@@ -88,12 +103,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const handleSelectTickerWithToast = (ticker: string) => {
     const clean = ticker.toUpperCase().trim();
     if (!isValidStockTicker(clean)) {
-      setNotification(`⚠️ Ticker "${clean}" not recognized. Please enter a valid listed stock ticker.`);
-      setTimeout(() => setNotification(null), 4500);
+      setNotification(`⚠️ Please use a valid ticker. "${clean}" was not found among NYSE or NASDAQ listed companies.`);
+      setTimeout(() => setNotification(null), 5000);
       return;
     }
     onSelectTicker(clean);
-    setNotification(`Audited profile for ${clean} loaded. SEC EDGAR facts synchronized.`);
+    setNotification(`Audited profile for ${clean} loaded. SEC EDGAR facts & Yahoo telemetry synchronized.`);
     setTimeout(() => setNotification(null), 3500);
   };
 
@@ -277,28 +292,36 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-5 text-xs">
+          <div className="flex flex-wrap items-center gap-5 text-xs">
             <div>
-              <span className="text-slate-500 text-[11px] block">Stock Price</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-500 text-[11px] block">Stock Price</span>
+                {liveQuote?.isLiveNetwork && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded text-[9px] font-mono">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    Live Yahoo
+                  </span>
+                )}
+              </div>
               <span className="text-white font-semibold font-mono text-sm">
-                ${companyProfile.stockPrice.toFixed(2)}
+                ${(liveQuote?.regularMarketPrice ?? companyProfile.stockPrice).toFixed(2)}
               </span>
             </div>
             <div>
               <span className="text-slate-500 text-[11px] block">24h Change</span>
               <span
-                className={`font-semibold font-mono ${
-                  companyProfile.priceChangePercent >= 0 ? 'text-emerald-400' : 'text-red-400'
+                className={`font-semibold font-mono text-sm ${
+                  (liveQuote?.regularMarketChangePercent ?? companyProfile.priceChangePercent) >= 0 ? 'text-emerald-400' : 'text-red-400'
                 }`}
               >
-                {companyProfile.priceChangePercent >= 0 ? '+' : ''}
-                {companyProfile.priceChangePercent}%
+                {(liveQuote?.regularMarketChangePercent ?? companyProfile.priceChangePercent) >= 0 ? '+' : ''}
+                {(liveQuote?.regularMarketChangePercent ?? companyProfile.priceChangePercent)}%
               </span>
             </div>
             <div>
               <span className="text-slate-500 text-[11px] block">Market Cap</span>
-              <span className="text-slate-300 font-semibold font-mono">
-                ${companyProfile.marketCap}B
+              <span className="text-slate-300 font-semibold font-mono text-sm">
+                {liveQuote?.marketCap ? `$${liveQuote.marketCap}B` : `$${companyProfile.marketCap}B`}
               </span>
             </div>
             <div>

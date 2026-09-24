@@ -1,5 +1,6 @@
 import { CompanyForensicProfile, FinancialYearData, ForensicFlag, IndustryLens, StockChartPoint, FlagSeverity, ThresholdType, ValueMode } from '../types';
 import { ALL_FLAG_DEFINITIONS } from './forensicFlags210';
+import { isTickerInNyseOrNasdaq, getNyseNasdaqCompany, TOP_NYSE_NASDAQ_COMPANIES } from './nyseNasdaqRegistry';
 
 // Deterministic company profiles with audited historicals from FY22 to FY26 + TTM
 export const PRELOADED_COMPANIES: Record<string, CompanyForensicProfile> = {
@@ -1409,12 +1410,78 @@ export const VALID_REAL_TICKERS: Record<string, { name: string; sector: string; 
   SCHW: { name: 'The Charles Schwab Corporation', sector: 'Wealth Management & Custodial Banking', lens: 'Banks', cik: '0000316709' }
 };
 
-// Generates realistic sector and metadata for ANY US stock ticker listed on Yahoo Finance / NYSE / NASDAQ
-export function getInferredTickerMeta(rawTicker: string): { name: string; sector: string; lens: IndustryLens; cik: string } {
+// Generates realistic sector and metadata for ANY authentic US stock ticker listed on NYSE / NASDAQ
+export function getInferredTickerMeta(
+  rawTicker: string,
+  officialName?: string,
+  officialCik?: string
+): { name: string; sector: string; lens: IndustryLens; cik: string } {
   const ticker = rawTicker.toUpperCase().trim();
   const seed = hashString(ticker);
-  const lenses: IndustryLens[] = ['SaaS', 'Retail', 'Payments', 'Banks', 'Tech Hardware', 'Healthcare', 'AI/Deep Tech'];
-  const lens = lenses[seed % lenses.length];
+  const nameUpper = (officialName || '').toUpperCase();
+
+  // Intelligently infer industry lens based on official company title keywords
+  let lens: IndustryLens;
+  if (
+    nameUpper.includes('PHARM') ||
+    nameUpper.includes('THERAP') ||
+    nameUpper.includes('HEALTH') ||
+    nameUpper.includes('BIO') ||
+    nameUpper.includes('MEDIC') ||
+    nameUpper.includes('SURG') ||
+    nameUpper.includes('CLINIC')
+  ) {
+    lens = 'Healthcare';
+  } else if (
+    nameUpper.includes('BANK') ||
+    nameUpper.includes('BANC') ||
+    nameUpper.includes('FINANC') ||
+    nameUpper.includes('CAPITAL') ||
+    nameUpper.includes('INSUR') ||
+    nameUpper.includes('TRUST') ||
+    nameUpper.includes('INVEST') ||
+    nameUpper.includes('HOLDING')
+  ) {
+    lens = 'Banks';
+  } else if (
+    nameUpper.includes('PAY') ||
+    nameUpper.includes('CARD') ||
+    nameUpper.includes('SETTLE') ||
+    nameUpper.includes('FINTECH')
+  ) {
+    lens = 'Payments';
+  } else if (
+    nameUpper.includes('SOFT') ||
+    nameUpper.includes('CLOUD') ||
+    nameUpper.includes('CYBER') ||
+    nameUpper.includes('SECURITY') ||
+    nameUpper.includes('NETWORK') ||
+    nameUpper.includes('DATA')
+  ) {
+    lens = 'SaaS';
+  } else if (
+    nameUpper.includes('AI ') ||
+    nameUpper.includes('ARTIFICIAL') ||
+    nameUpper.includes('ROBOT') ||
+    nameUpper.includes('INTELLIGENCE') ||
+    nameUpper.includes('COMPUTE')
+  ) {
+    lens = 'AI/Deep Tech';
+  } else if (
+    nameUpper.includes('RETAIL') ||
+    nameUpper.includes('STORE') ||
+    nameUpper.includes('BRAND') ||
+    nameUpper.includes('MOTOR') ||
+    nameUpper.includes('AUTO') ||
+    nameUpper.includes('FOOD') ||
+    nameUpper.includes('BEVERAGE') ||
+    nameUpper.includes('CONSUMER')
+  ) {
+    lens = 'Retail';
+  } else {
+    const fallbackLenses: IndustryLens[] = ['SaaS', 'Retail', 'Payments', 'Banks', 'Tech Hardware', 'Healthcare', 'AI/Deep Tech'];
+    lens = fallbackLenses[seed % fallbackLenses.length];
+  }
 
   const sectorMap: Record<IndustryLens, string[]> = {
     'SaaS': [
@@ -1463,29 +1530,21 @@ export function getInferredTickerMeta(rawTicker: string): { name: string; sector
 
   const sectors = sectorMap[lens];
   const sector = sectors[seed % sectors.length];
-  const cikNum = 1000000 + (seed % 8999990);
-  const cik = cikNum.toString().padStart(10, '0');
-
-  // Realistic company name synthesis
-  const suffixes = ['Inc.', 'Corporation', 'Technologies Inc.', 'Holdings Inc.', 'Group Inc.'];
-  const suffix = suffixes[seed % suffixes.length];
-  const formattedName = `${ticker} ${suffix}`;
+  const finalCik = officialCik || (1000000 + (seed % 8999990)).toString().padStart(10, '0');
+  const finalName = officialName || `${ticker} Corporation`;
 
   return {
-    name: formattedName,
+    name: finalName,
     sector,
     lens,
-    cik
+    cik: finalCik
   };
 }
 
-// Accepts ALL US stock tickers listed on Yahoo Finance, NYSE, NASDAQ, and AMEX
+// Accepts ONLY verified, real US stock tickers listed on NYSE or NASDAQ (rejects random letters)
 export function isValidStockTicker(rawTicker: string): boolean {
   if (!rawTicker) return false;
-  const t = rawTicker.toUpperCase().trim();
-  // Validates any standard US stock ticker symbol (1-5 letters, optional share classes e.g. BRK.A, BRK.B, BF.B, BF-B)
-  const usTickerRegex = /^[A-Z]{1,5}(\.[A-Z]{1,2}|-[A-Z]{1,2})?$/;
-  return usTickerRegex.test(t);
+  return isTickerInNyseOrNasdaq(rawTicker);
 }
 
 // Deterministically generate flags for a company to guarantee ZERO jitter or score changes
@@ -1493,7 +1552,7 @@ export function getDeterministicCompanyProfile(rawTicker: string): CompanyForens
   const ticker = rawTicker.toUpperCase().trim();
   if (!ticker) return null;
 
-  // Real US stock ticker validation (NYSE / NASDAQ / Yahoo Finance)
+  // Real US stock ticker validation (strictly restricted to NYSE / NASDAQ only)
   if (!isValidStockTicker(ticker)) {
     return null;
   }
@@ -1509,8 +1568,14 @@ export function getDeterministicCompanyProfile(rawTicker: string): CompanyForens
     return profile;
   }
 
-  // Known real ticker from master registry OR dynamically inferred for ANY US stock ticker on Yahoo Finance
-  const meta = VALID_REAL_TICKERS[ticker] || getInferredTickerMeta(ticker);
+  // Official verified NYSE/NASDAQ company from master SEC registry
+  const nyseNasdaqMeta = getNyseNasdaqCompany(ticker);
+  const knownMeta = VALID_REAL_TICKERS[ticker];
+
+  const officialName = nyseNasdaqMeta?.name || knownMeta?.name;
+  const officialCik = nyseNasdaqMeta?.cik || knownMeta?.cik;
+  const meta = getInferredTickerMeta(ticker, officialName, officialCik);
+
   const seed = hashString(ticker);
   const assignedLens = meta.lens;
   const baseScore = 65 + (seed % 28); // deterministic 65 - 92
