@@ -171,7 +171,18 @@ export async function ensureRegistryLoaded(): Promise<void> {
     const response = await fetch('/nyse_nasdaq_tickers.json');
     if (response.ok) {
       const data = await response.json();
-      fullRegistryCache = { ...TOP_NYSE_NASDAQ_COMPANIES, ...data };
+      const normalized: Record<string, NyseNasdaqCompany> = {};
+      for (const [key, val] of Object.entries(data as Record<string, any>)) {
+        if (!key) continue;
+        const tick = (val?.ticker || key).trim().toUpperCase();
+        normalized[tick] = {
+          ticker: tick,
+          name: val?.name || tick,
+          exchange: val?.exchange === 'NASDAQ' ? 'NASDAQ' : 'NYSE',
+          cik: val?.cik || '0000000000'
+        };
+      }
+      fullRegistryCache = { ...TOP_NYSE_NASDAQ_COMPANIES, ...normalized };
     } else {
       fullRegistryCache = { ...TOP_NYSE_NASDAQ_COMPANIES };
     }
@@ -243,10 +254,30 @@ export function getNyseNasdaqCompany(rawTicker: string): NyseNasdaqCompany | und
 }
 
 /**
+ * Smart resolver that turns either a ticker (e.g. "AAPL", "PLTR") or 
+ * a company name (e.g. "Apple", "Palantir", "Microsoft") into a valid ticker.
+ * Returns null if the input is random text or not found in NYSE/NASDAQ.
+ */
+export function resolveQueryToTicker(input: string): string | null {
+  if (!input) return null;
+  const clean = normalizeTicker(input);
+  if (isTickerInNyseOrNasdaq(clean)) {
+    return clean;
+  }
+  // Try searching in case user typed full or partial company name
+  const matches = searchNyseNasdaqCompanies(input, 1);
+  if (matches.length > 0 && matches[0]?.ticker && isTickerInNyseOrNasdaq(matches[0].ticker)) {
+    return matches[0].ticker;
+  }
+  return null;
+}
+
+/**
  * Real-time fast autocomplete for NYSE & NASDAQ companies.
- * Queries across 8,000+ real tickers and company titles.
+ * Queries across 8,000+ real tickers and company titles safely.
  */
 export function searchNyseNasdaqCompanies(query: string, maxResults = 8): NyseNasdaqCompany[] {
+  if (!query) return [];
   const q = query.trim().toUpperCase();
   if (!q) return [];
 
@@ -262,23 +293,26 @@ export function searchNyseNasdaqCompanies(query: string, maxResults = 8): NyseNa
   const seen = new Set<string>();
 
   for (const item of entries) {
-    if (seen.has(item.ticker)) continue;
+    if (!item) continue;
+    const ticker = item.ticker || '';
+    if (!ticker) continue;
+    if (seen.has(ticker)) continue;
 
-    const tUpper = item.ticker.toUpperCase();
-    const nUpper = item.name.toUpperCase();
+    const tUpper = ticker.toUpperCase();
+    const nUpper = (item.name || '').toUpperCase();
 
     if (tUpper === q) {
       exact.push(item);
-      seen.add(item.ticker);
+      seen.add(ticker);
     } else if (tUpper.startsWith(q)) {
       startsWithTicker.push(item);
-      seen.add(item.ticker);
+      seen.add(ticker);
     } else if (tUpper.includes(q)) {
       containsTicker.push(item);
-      seen.add(item.ticker);
+      seen.add(ticker);
     } else if (nUpper.includes(q)) {
       nameMatches.push(item);
-      seen.add(item.ticker);
+      seen.add(ticker);
     }
 
     if (exact.length + startsWithTicker.length + containsTicker.length + nameMatches.length >= maxResults * 4) {

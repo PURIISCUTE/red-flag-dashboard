@@ -10,6 +10,7 @@ import { InvestigationQueueDrawer } from '../components/InvestigationQueueDrawer
 import { StressTestSimulator } from '../components/StressTestSimulator';
 import { Footer } from '../components/Footer';
 import { getDeterministicCompanyProfile, isValidStockTicker } from '../data/companyData';
+import { resolveQueryToTicker } from '../data/nyseNasdaqRegistry';
 import { generateAuditPdf } from '../services/pdfGenerator';
 import { fetchLiveYahooQuote, LiveYahooQuote } from '../services/yahooFinanceService';
 import { 
@@ -101,14 +102,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   }, [userSession?.email]);
 
   const handleSelectTickerWithToast = (ticker: string) => {
-    const clean = ticker.toUpperCase().trim();
-    if (!isValidStockTicker(clean)) {
+    const resolved = resolveQueryToTicker(ticker);
+    if (!resolved || !isValidStockTicker(resolved)) {
+      const clean = ticker.toUpperCase().trim();
       setNotification(`⚠️ Please use a valid ticker. "${clean}" was not found among NYSE or NASDAQ listed companies.`);
       setTimeout(() => setNotification(null), 5000);
       return;
     }
-    onSelectTicker(clean);
-    setNotification(`Audited profile for ${clean} loaded. SEC EDGAR facts & Yahoo telemetry synchronized.`);
+    onSelectTicker(resolved);
+    setNotification(`Audited profile for ${resolved} loaded. SEC EDGAR facts & Yahoo telemetry synchronized.`);
     setTimeout(() => setNotification(null), 3500);
   };
 

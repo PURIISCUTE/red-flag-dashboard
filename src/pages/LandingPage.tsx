@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { IndustryLens } from '../types';
 import { getDeterministicCompanyProfile } from '../data/companyData';
-import { isTickerInNyseOrNasdaq, searchNyseNasdaqCompanies, NyseNasdaqCompany } from '../data/nyseNasdaqRegistry';
+import { isTickerInNyseOrNasdaq, searchNyseNasdaqCompanies, resolveQueryToTicker, NyseNasdaqCompany } from '../data/nyseNasdaqRegistry';
 import { Logo } from '../components/Logo';
 import { Forensic3DScanner } from '../components/Forensic3DScanner';
 import { Card3D } from '../components/Card3D';
@@ -37,7 +37,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onNavigateToSignup
 }) => {
   const [heroTicker, setHeroTicker] = useState<'AAPL' | 'NVDA' | 'TSLA' | 'PYPL'>('AAPL');
-  const [heroTickerInput, setHeroTickerInput] = useState('PLTR');
+  const [heroTickerInput, setHeroTickerInput] = useState('');
   const [heroError, setHeroError] = useState<string | null>(null);
   const [isHeroFocused, setIsHeroFocused] = useState(false);
   const [activeLensTab, setActiveLensTab] = useState<IndustryLens>('SaaS');
@@ -53,18 +53,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   const handleHeroSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const raw = heroTickerInput.trim().toUpperCase();
+    const raw = heroTickerInput.trim();
     if (!raw) return;
 
-    if (!isTickerInNyseOrNasdaq(raw)) {
-      setHeroError(`Please use a valid ticker. "${raw}" was not found among NYSE or NASDAQ listed companies.`);
+    const resolved = resolveQueryToTicker(raw);
+    if (!resolved) {
+      setHeroError(`Please use a valid ticker. "${raw.toUpperCase()}" was not found among NYSE or NASDAQ listed companies.`);
       setTimeout(() => setHeroError(null), 5500);
       return;
     }
 
     setHeroError(null);
     setIsHeroFocused(false);
-    onNavigateToDashboard(raw);
+    onNavigateToDashboard(resolved);
   };
 
   const handleSelectHeroSuggestion = (ticker: string) => {
@@ -205,10 +206,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       onFocus={() => setIsHeroFocused(true)}
                       onBlur={() => setTimeout(() => setIsHeroFocused(false), 250)}
                       onChange={(e) => {
-                        setHeroTickerInput(e.target.value.toUpperCase());
+                        setHeroTickerInput(e.target.value);
                         if (heroError) setHeroError(null);
                       }}
-                      placeholder="Search NYSE & NASDAQ (e.g. AAPL, PLTR, AMD)..."
+                      placeholder="Search NYSE & NASDAQ ticker or company (e.g. AAPL, PLTR, Apple)..."
                       className="flex-1 bg-transparent border-none outline-none text-xs font-mono text-white placeholder:text-slate-500 px-2 py-1.5"
                     />
                     <button

@@ -36,9 +36,10 @@ export const DataSourcePriorityModal: React.FC<DataSourcePriorityModalProps> = (
   if (!isOpen) return null;
 
   const handleRunLiveProbe = async () => {
+    const clean = probeTicker.trim().toUpperCase() || 'AAPL';
     setIsProbing(true);
     try {
-      const result = await fetchLiveYahooQuote(probeTicker, 228.45);
+      const result = await fetchLiveYahooQuote(clean, 228.45);
       setProbeResult(result);
     } catch {
       // handled inside service
@@ -277,7 +278,7 @@ export const DataSourcePriorityModal: React.FC<DataSourcePriorityModalProps> = (
                 <input
                   type="text"
                   value={probeTicker}
-                  onChange={(e) => setProbeTicker(e.target.value.toUpperCase())}
+                  onChange={(e) => setProbeTicker(e.target.value)}
                   placeholder="e.g. AAPL, NVDA, TSLA, PLTR, AMD"
                   className="flex-1 bg-slate-900 border border-slate-700 px-3 py-2 text-xs font-mono text-white rounded-lg outline-none uppercase"
                 />

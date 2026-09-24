@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { CompanyForensicProfile, UserSession } from '../types';
 import { isValidStockTicker } from '../data/companyData';
-import { isTickerInNyseOrNasdaq, searchNyseNasdaqCompanies, NyseNasdaqCompany } from '../data/nyseNasdaqRegistry';
+import { isTickerInNyseOrNasdaq, searchNyseNasdaqCompanies, resolveQueryToTicker, NyseNasdaqCompany } from '../data/nyseNasdaqRegistry';
 import { Logo } from './Logo';
 
 interface HeaderProps {
@@ -61,18 +61,19 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const raw = searchInput.trim().toUpperCase();
+    const raw = searchInput.trim();
     if (!raw) return;
 
-    if (!isTickerInNyseOrNasdaq(raw)) {
-      setSearchError(`Please use a valid ticker. "${raw}" was not found among NYSE or NASDAQ listed companies.`);
+    const resolved = resolveQueryToTicker(raw);
+    if (!resolved) {
+      setSearchError(`Please use a valid ticker. "${raw.toUpperCase()}" was not found among NYSE or NASDAQ listed companies.`);
       setTimeout(() => setSearchError(null), 5500);
       return;
     }
 
     setSearchError(null);
     setIsSearchFocused(false);
-    onSelectCompany(raw);
+    onSelectCompany(resolved);
     setSearchInput('');
   };
 
