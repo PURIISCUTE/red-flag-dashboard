@@ -42,9 +42,7 @@ export const SignupPage: React.FC<SignupPageProps> = ({
         name: 'Pratik Surya',
         email: userEmail,
         isLoggedIn: true,
-        emailVerified: true,
-        tier: 'Institutional',
-        role: 'Forensic Equity Analyst'
+        emailVerified: true
       };
       setIsLoading(false);
       onSignupSuccess(session);
@@ -76,9 +74,7 @@ export const SignupPage: React.FC<SignupPageProps> = ({
         name: name.trim(),
         email: email.trim(),
         isLoggedIn: true,
-        emailVerified: true,
-        tier: 'Institutional',
-        role: 'Forensic Equity Analyst'
+        emailVerified: true
       };
 
       setIsLoading(false);

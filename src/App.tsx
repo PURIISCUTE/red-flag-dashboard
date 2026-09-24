@@ -13,7 +13,16 @@ export default function App() {
   const [userSession, setUserSession] = useState<UserSession | null>(() => {
     try {
       const saved = localStorage.getItem('redflag_user_session');
-      return saved ? JSON.parse(saved) : null;
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      // Clean up any legacy mock fields like Citadel Risk or Institutional
+      delete parsed.organization;
+      delete parsed.tier;
+      delete parsed.role;
+      try {
+        localStorage.setItem('redflag_user_session', JSON.stringify(parsed));
+      } catch {}
+      return parsed;
     } catch {
       return null;
     }
@@ -83,6 +92,18 @@ export default function App() {
     navigateTo('landing');
   };
 
+  const handleUpdateUserSession = (updated: UserSession) => {
+    delete (updated as any).organization;
+    delete (updated as any).tier;
+    delete (updated as any).role;
+    setUserSession(updated);
+    try {
+      localStorage.setItem('redflag_user_session', JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Failed to persist session to localStorage', e);
+    }
+  };
+
   // Render active view
   if (currentPage === 'login') {
     return (
@@ -110,6 +131,7 @@ export default function App() {
         currentTicker={currentTicker}
         onSelectTicker={(ticker) => setCurrentTicker(ticker)}
         userSession={userSession}
+        onUpdateUserSession={handleUpdateUserSession}
         onNavigateToLanding={() => navigateTo('landing')}
         onLogout={handleLogout}
       />

@@ -34,11 +34,13 @@ import {
 import { ForensicRiskGlobe3D } from '../components/ForensicRiskGlobe3D';
 import { Card3D } from '../components/Card3D';
 import { InputSheetModal } from '../components/InputSheetModal';
+import { ProfileModal } from '../components/ProfileModal';
 
 interface DashboardPageProps {
   currentTicker: string;
   onSelectTicker: (ticker: string) => void;
   userSession: UserSession | null;
+  onUpdateUserSession?: (session: UserSession) => void;
   onNavigateToLanding: () => void;
   onLogout: () => void;
 }
@@ -49,10 +51,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   currentTicker,
   onSelectTicker,
   userSession,
+  onUpdateUserSession,
   onNavigateToLanding,
   onLogout
 }) => {
   const [isPriorityModalOpen, setIsPriorityModalOpen] = useState<boolean>(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
   const [isLiveScanOpen, setIsLiveScanOpen] = useState<boolean>(false);
   const [isInvestigationQueueOpen, setIsInvestigationQueueOpen] = useState<boolean>(false);
   const [isInputSheetOpen, setIsInputSheetOpen] = useState<boolean>(false);
@@ -212,6 +216,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         onOpenPriorityModal={() => setIsPriorityModalOpen(true)}
         onOpenLiveScan={() => setIsLiveScanOpen(true)}
         onOpenInvestigationQueue={() => setIsInvestigationQueueOpen(true)}
+        onOpenProfileModal={() => setIsProfileModalOpen(true)}
         investigationCount={investigationItems.length}
         onExportPdf={handleExportPdf}
         isExportingPdf={isExportingPdf}
@@ -564,6 +569,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       <InputSheetModal
         isOpen={isInputSheetOpen}
         onClose={() => setIsInputSheetOpen(false)}
+      />
+
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        userSession={userSession}
+        onUpdateUserSession={(updated) => {
+          if (onUpdateUserSession) {
+            onUpdateUserSession(updated);
+          }
+          setNotification(`Profile updated: ${updated.name}`);
+          setTimeout(() => setNotification(null), 3000);
+        }}
       />
 
       {/* Toned Down, Clean Footer */}

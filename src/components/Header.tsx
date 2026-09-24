@@ -10,7 +10,8 @@ import {
   LogOut,
   LayoutDashboard,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  User
 } from 'lucide-react';
 import { CompanyForensicProfile, UserSession } from '../types';
 import { isValidStockTicker } from '../data/companyData';
@@ -22,6 +23,7 @@ interface HeaderProps {
   onOpenPriorityModal: () => void;
   onOpenLiveScan: () => void;
   onOpenInvestigationQueue: () => void;
+  onOpenProfileModal?: () => void;
   investigationCount: number;
   onExportPdf: () => void;
   isExportingPdf: boolean;
@@ -36,6 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenPriorityModal,
   onOpenLiveScan,
   onOpenInvestigationQueue,
+  onOpenProfileModal,
   investigationCount,
   onExportPdf,
   isExportingPdf,
@@ -214,77 +217,84 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="relative ml-1">
             <button
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-              className="flex items-center gap-2 px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-sans text-slate-200 transition-colors"
+              className="flex items-center gap-2 px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-sans text-slate-200 transition-colors cursor-pointer"
             >
-              <div className="h-5 w-5 rounded-full bg-red-500/20 border border-red-500/40 flex items-center justify-center text-[10px] font-bold text-red-400">
-                {userSession ? userSession.name.charAt(0) : 'U'}
+              <div className="h-6 w-6 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-semibold text-slate-200">
+                {userSession?.name ? userSession.name.charAt(0).toUpperCase() : 'U'}
               </div>
-              <span className="hidden xl:inline max-w-[100px] truncate text-slate-300">
-                {userSession ? userSession.name : 'Analyst'}
+              <span className="hidden xl:inline max-w-[120px] truncate text-slate-300 font-medium">
+                {userSession ? userSession.name : 'Profile'}
               </span>
               <ChevronDown className="h-3 w-3 text-slate-400" />
             </button>
 
             {isUserMenuOpen && (
               <div className="absolute right-0 mt-1.5 w-60 bg-slate-900 border border-slate-800 rounded-xl shadow-xl z-50 p-2 font-sans text-xs">
-                <div className="pb-2 border-b border-slate-800 mb-2 px-1">
-                  <div className="font-semibold text-slate-100 truncate">
-                    {userSession?.name || 'Institutional Analyst'}
+                {/* Clean Normal Profile Info Header */}
+                <div className="pb-2.5 border-b border-slate-800 mb-2 px-1">
+                  <div className="font-semibold text-slate-100 truncate text-xs">
+                    {userSession?.name || 'User'}
                   </div>
                   <div className="text-[11px] text-slate-400 truncate">
-                    {userSession?.email || 'analyst@redflagterminal.com'}
-                  </div>
-                  <div className="mt-1 flex items-center gap-1.5">
-                    <span className="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] rounded">
-                      {userSession?.tier || 'Institutional'}
-                    </span>
-                    <span className="text-[11px] text-slate-400 truncate">
-                      {userSession?.organization || 'Citadel Risk'}
-                    </span>
+                    {userSession?.email || 'user@example.com'}
                   </div>
                 </div>
 
                 <div className="space-y-1">
                   <button
                     onClick={() => {
-                      onNavigateToLanding();
+                      if (onOpenProfileModal) onOpenProfileModal();
                       setIsUserMenuOpen(false);
                     }}
-                    className="w-full text-left px-2 py-1.5 rounded text-slate-300 hover:bg-slate-800 flex items-center gap-2"
+                    className="w-full text-left px-2 py-1.5 rounded text-slate-300 hover:bg-slate-800 flex items-center gap-2 transition-colors cursor-pointer"
                   >
-                    <Globe className="h-3.5 w-3.5 text-indigo-400" />
-                    <span>View Cover Page</span>
+                    <User className="h-3.5 w-3.5 text-slate-400" />
+                    <span>My Profile</span>
                   </button>
-                  <button
-                    onClick={() => {
-                      onOpenLiveScan();
-                      setIsUserMenuOpen(false);
-                    }}
-                    className="w-full text-left px-2 py-1.5 rounded text-slate-300 hover:bg-slate-800 flex items-center gap-2"
-                  >
-                    <Zap className="h-3.5 w-3.5 text-amber-400" />
-                    <span>Run SEC Rescan</span>
-                  </button>
+
                   <button
                     onClick={() => {
                       onOpenInvestigationQueue();
                       setIsUserMenuOpen(false);
                     }}
-                    className="w-full text-left px-2 py-1.5 rounded text-slate-300 hover:bg-slate-800 flex items-center gap-2"
+                    className="w-full text-left px-2 py-1.5 rounded text-slate-300 hover:bg-slate-800 flex items-center gap-2 transition-colors cursor-pointer"
                   >
                     <Bookmark className="h-3.5 w-3.5 text-red-400" />
-                    <span>Investigation Queue ({investigationCount})</span>
+                    <span>Saved Queue ({investigationCount})</span>
                   </button>
+
+                  <button
+                    onClick={() => {
+                      onOpenLiveScan();
+                      setIsUserMenuOpen(false);
+                    }}
+                    className="w-full text-left px-2 py-1.5 rounded text-slate-300 hover:bg-slate-800 flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <Zap className="h-3.5 w-3.5 text-amber-400" />
+                    <span>Run SEC Rescan</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      onNavigateToLanding();
+                      setIsUserMenuOpen(false);
+                    }}
+                    className="w-full text-left px-2 py-1.5 rounded text-slate-300 hover:bg-slate-800 flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <Globe className="h-3.5 w-3.5 text-indigo-400" />
+                    <span>Cover Page</span>
+                  </button>
+
                   <div className="pt-1 border-t border-slate-800 mt-1">
                     <button
                       onClick={() => {
                         onLogout();
                         setIsUserMenuOpen(false);
                       }}
-                      className="w-full text-left px-2 py-1.5 rounded text-red-400 hover:bg-red-950/40 flex items-center gap-2"
+                      className="w-full text-left px-2 py-1.5 rounded text-red-400 hover:bg-red-950/40 flex items-center gap-2 transition-colors cursor-pointer"
                     >
                       <LogOut className="h-3.5 w-3.5" />
-                      <span>Sign Out to Cover Page</span>
+                      <span>Sign Out</span>
                     </button>
                   </div>
                 </div>

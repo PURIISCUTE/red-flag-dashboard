@@ -44,9 +44,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         name: 'Pratik Surya',
         email: userEmail,
         isLoggedIn: true,
-        emailVerified: true,
-        tier: 'Institutional',
-        role: 'Forensic Equity Analyst'
+        emailVerified: true
       };
       setIsLoading(false);
       onLoginSuccess(session);
@@ -74,12 +72,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
       const session: UserSession = {
         id: `usr_${Date.now()}`,
-        name: formattedName || 'Forensic Analyst',
+        name: formattedName || 'User',
         email: email.trim(),
         isLoggedIn: true,
-        emailVerified: true,
-        tier: 'Institutional',
-        role: 'Forensic Analyst'
+        emailVerified: true
       };
 
       setIsLoading(false);
@@ -90,13 +86,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   // Instant Demo Access
   const handleQuickDemoAccess = () => {
     const session: UserSession = {
-      id: 'usr_demo_terminal',
-      name: 'Senior Forensic Analyst',
-      email: 'analyst@redflag-terminal.sec',
+      id: 'usr_demo',
+      name: 'Demo User',
+      email: 'demo@example.com',
       isLoggedIn: true,
-      emailVerified: true,
-      tier: 'Regulatory',
-      role: 'Chief Audit Examiner'
+      emailVerified: true
     };
     onLoginSuccess(session);
   };
