@@ -12,7 +12,6 @@ import { Footer } from '../components/Footer';
 import { getDeterministicCompanyProfile, isValidStockTicker, applyIndustryLensToProfile } from '../data/companyData';
 import { resolveQueryToTicker } from '../data/nyseNasdaqRegistry';
 import { generateAuditPdf } from '../services/pdfGenerator';
-import { exportMasterExcelModel } from '../services/excelExportService';
 import { askAiToClassifyIndustry, VALID_7_LENSES } from '../services/industryClassifier';
 import { fetchLiveYahooQuote, LiveYahooQuote } from '../services/yahooFinanceService';
 import { 
@@ -301,11 +300,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         onOpenProfileModal={() => setIsProfileModalOpen(true)}
         investigationCount={investigationItems.length}
         onExportPdf={handleExportPdf}
-        onExportExcel={() => {
-          exportMasterExcelModel(companyProfile);
-          setNotification(`Master Excel Model (.xlsx) downloaded with all 7 Industry Lenses and 27 SEC Source Documents.`);
-          setTimeout(() => setNotification(null), 4000);
-        }}
         isExportingPdf={isExportingPdf}
         userSession={userSession}
         onNavigateToLanding={onNavigateToLanding}
