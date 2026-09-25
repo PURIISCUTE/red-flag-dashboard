@@ -17,7 +17,8 @@ import {
   FileSpreadsheet,
   CheckCircle2,
   Clock,
-  Database
+  Database,
+  Download
 } from 'lucide-react';
 import { 
   ForensicFlag, 
@@ -29,6 +30,7 @@ import {
   ValueMode
 } from '../types';
 import { InputSheetModal } from './InputSheetModal';
+import { exportMasterExcelModel } from '../services/excelExportService';
 
 interface ForensicFlagMatrixProps {
   company: CompanyForensicProfile;
@@ -115,10 +117,19 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <button
             onClick={() => setIsInputSheetOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1 bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-500/40 rounded-lg font-semibold transition-all shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1 bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-500/40 rounded-lg font-semibold transition-all shadow-sm cursor-pointer"
           >
             <FileSpreadsheet className="h-3.5 w-3.5 text-red-400" />
-            <span>SEC Input Sheet & TTM Guide</span>
+            <span>SEC Input Sheet &amp; TTM Guide</span>
+          </button>
+
+          <button
+            onClick={() => exportMasterExcelModel(company)}
+            className="flex items-center gap-1.5 px-3 py-1 bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-500/40 rounded-lg font-semibold transition-all shadow-sm cursor-pointer"
+            title="Download Master Excel Workbook (.xlsx)"
+          >
+            <Download className="h-3.5 w-3.5 text-emerald-400" />
+            <span>Export Excel (.xlsx)</span>
           </button>
 
           <div className="h-4 w-[1px] bg-slate-800 hidden sm:block"></div>

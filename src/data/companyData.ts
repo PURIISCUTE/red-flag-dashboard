@@ -1,6 +1,7 @@
 import { CompanyForensicProfile, FinancialYearData, ForensicFlag, IndustryLens, StockChartPoint, FlagSeverity, ThresholdType, ValueMode } from '../types';
 import { ALL_FLAG_DEFINITIONS } from './forensicFlags210';
 import { isTickerInNyseOrNasdaq, getNyseNasdaqCompany, TOP_NYSE_NASDAQ_COMPANIES } from './nyseNasdaqRegistry';
+import { inferIndustryHeuristic } from '../services/industryClassifier';
 
 // Deterministic company profiles with audited historicals from FY22 to FY26 + TTM
 export const PRELOADED_COMPANIES: Record<string, CompanyForensicProfile> = {
@@ -1479,8 +1480,7 @@ export function getInferredTickerMeta(
   ) {
     lens = 'Retail';
   } else {
-    const fallbackLenses: IndustryLens[] = ['SaaS', 'Retail', 'Payments', 'Banks', 'Tech Hardware', 'Healthcare', 'AI/Deep Tech'];
-    lens = fallbackLenses[seed % fallbackLenses.length];
+    lens = inferIndustryHeuristic(ticker, officialName);
   }
 
   const sectorMap: Record<IndustryLens, string[]> = {
@@ -2050,3 +2050,16 @@ function generateDeterministicFlags(profile: CompanyForensicProfile): ForensicFl
     };
   });
 }
+
+// Allows switching the company forensic evaluation dynamically across any of the 7 industry lenses
+export function applyIndustryLensToProfile(profile: CompanyForensicProfile, newLens: IndustryLens): CompanyForensicProfile {
+  const updated: CompanyForensicProfile = {
+    ...profile,
+    lens: newLens
+  };
+  updated.flags = generateDeterministicFlags(updated);
+  return updated;
+}
+
+export { generateDeterministicFlags };
+

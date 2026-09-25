@@ -9,14 +9,17 @@ import { LiveSecScanModal } from '../components/LiveSecScanModal';
 import { InvestigationQueueDrawer } from '../components/InvestigationQueueDrawer';
 import { StressTestSimulator } from '../components/StressTestSimulator';
 import { Footer } from '../components/Footer';
-import { getDeterministicCompanyProfile, isValidStockTicker } from '../data/companyData';
+import { getDeterministicCompanyProfile, isValidStockTicker, applyIndustryLensToProfile } from '../data/companyData';
 import { resolveQueryToTicker } from '../data/nyseNasdaqRegistry';
 import { generateAuditPdf } from '../services/pdfGenerator';
+import { exportMasterExcelModel } from '../services/excelExportService';
+import { askAiToClassifyIndustry, VALID_7_LENSES } from '../services/industryClassifier';
 import { fetchLiveYahooQuote, LiveYahooQuote } from '../services/yahooFinanceService';
 import { 
   UserSession, 
   InvestigationItem, 
-  ForensicFlag 
+  ForensicFlag,
+  IndustryLens
 } from '../types';
 import { 
   CheckCircle2, 
@@ -31,7 +34,8 @@ import {
   Layers,
   Sparkles,
   Rotate3d,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Bot
 } from 'lucide-react';
 import { ForensicRiskGlobe3D } from '../components/ForensicRiskGlobe3D';
 import { Card3D } from '../components/Card3D';
@@ -72,12 +76,73 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [activeModule, setActiveModule] = useState<ActiveViewModule>('overview');
   const [isModuleDropdownOpen, setIsModuleDropdownOpen] = useState<boolean>(false);
 
+  // Active Industry Lens state (allows user and AI to select across the 7 industries)
+  const [selectedLens, setSelectedLens] = useState<IndustryLens | null>(null);
+  const [isClassifyingAi, setIsClassifyingAi] = useState<boolean>(false);
+  const [aiClassificationNote, setAiLensNote] = useState<string | null>(null);
+
   // Base deterministic company profile
-  const companyProfile = useMemo(() => {
+  const baseCompanyProfile = useMemo(() => {
     const profile = getDeterministicCompanyProfile(currentTicker);
     if (profile) return profile;
     return getDeterministicCompanyProfile('AAPL')!;
   }, [currentTicker]);
+
+  // Execute AI industry classification instruction when ticker loads
+  React.useEffect(() => {
+    let active = true;
+    setIsClassifyingAi(true);
+    setAiLensNote(null);
+
+    askAiToClassifyIndustry(baseCompanyProfile.ticker, baseCompanyProfile.name, baseCompanyProfile.sector)
+      .then((res) => {
+        if (active) {
+          setSelectedLens(res.lens);
+          setIsClassifyingAi(false);
+          setAiLensNote(res.note || `AI Agent assigned ${res.lens} lens`);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setSelectedLens(baseCompanyProfile.lens);
+          setIsClassifyingAi(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [baseCompanyProfile.ticker, baseCompanyProfile.name, baseCompanyProfile.sector, baseCompanyProfile.lens]);
+
+  // Dynamically evaluated profile according to active industry lens
+  const companyProfile = useMemo(() => {
+    if (selectedLens && selectedLens !== baseCompanyProfile.lens) {
+      return applyIndustryLensToProfile(baseCompanyProfile, selectedLens);
+    }
+    return baseCompanyProfile;
+  }, [baseCompanyProfile, selectedLens]);
+
+  // Re-run AI classification on demand
+  const handleReAskAiClassification = () => {
+    setIsClassifyingAi(true);
+    askAiToClassifyIndustry(baseCompanyProfile.ticker, baseCompanyProfile.name, baseCompanyProfile.sector)
+      .then((res) => {
+        setSelectedLens(res.lens);
+        setIsClassifyingAi(false);
+        setAiLensNote(res.note || `AI classified as ${res.lens}`);
+        setNotification(`AI Agent re-evaluated ${companyProfile.ticker}: assigned to ${res.lens} lens.`);
+        setTimeout(() => setNotification(null), 4000);
+      })
+      .catch(() => {
+        setIsClassifyingAi(false);
+      });
+  };
+
+  const handleSelectIndustryLens = (lens: IndustryLens) => {
+    setSelectedLens(lens);
+    setNotification(`Switched ${companyProfile.ticker} audit lens to ${lens} (30 specialized flags loaded).`);
+    setTimeout(() => setNotification(null), 3500);
+  };
 
   // Synchronize live Yahoo Finance Telemetry
   React.useEffect(() => {
@@ -236,6 +301,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         onOpenProfileModal={() => setIsProfileModalOpen(true)}
         investigationCount={investigationItems.length}
         onExportPdf={handleExportPdf}
+        onExportExcel={() => {
+          exportMasterExcelModel(companyProfile);
+          setNotification(`Master Excel Model (.xlsx) downloaded with all 7 Industry Lenses and 27 SEC Source Documents.`);
+          setTimeout(() => setNotification(null), 4000);
+        }}
         isExportingPdf={isExportingPdf}
         userSession={userSession}
         onNavigateToLanding={onNavigateToLanding}
@@ -259,6 +329,63 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </button>
           </div>
         )}
+
+        {/* 7-Industry Forensic Lens Switcher & AI Directive */}
+        <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-400">
+              <Bot className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-white uppercase tracking-wider">
+                  AI Industry Lens (7 Sectors)
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  Active: {companyProfile.lens}
+                </span>
+                {isClassifyingAi ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-mono text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/30 animate-pulse">
+                    Asking AI to Pick...
+                  </span>
+                ) : aiClassificationNote ? (
+                  <span className="text-[11px] text-emerald-400 hidden lg:inline">
+                    ✓ {aiClassificationNote}
+                  </span>
+                ) : null}
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Every verified company is audited across 30 flags specifically mapped to its industry lens.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            {VALID_7_LENSES.map((lens) => (
+              <button
+                key={lens}
+                onClick={() => handleSelectIndustryLens(lens)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  companyProfile.lens === lens
+                    ? 'bg-red-500 text-white shadow-sm font-semibold'
+                    : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
+                }`}
+              >
+                {lens}
+              </button>
+            ))}
+
+            <button
+              onClick={handleReAskAiClassification}
+              disabled={isClassifyingAi}
+              className="ml-1 flex items-center gap-1 px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 shadow-sm"
+              title="Instruct AI to classify company into 1 of the 7 industries"
+            >
+              <Sparkles className="h-3 w-3" />
+              <span>Ask AI to Pick</span>
+            </button>
+          </div>
+        </div>
 
         {/* Company Quick Profile Bar */}
         <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl flex flex-wrap items-center justify-between gap-4 shadow-sm">

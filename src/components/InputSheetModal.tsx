@@ -12,26 +12,33 @@ import {
   Cpu,
   Bot,
   Filter,
-  X
+  X,
+  Download,
+  FileSpreadsheet,
+  Table
 } from 'lucide-react';
 import { SOURCE_DOCUMENTS, MASTER_INPUTS_SHEET, MasterInputItem } from '../data/sourceDocuments';
-import { ValueMode } from '../types';
+import { ALL_FLAG_DEFINITIONS } from '../data/forensicFlags210';
+import { exportMasterExcelModel } from '../services/excelExportService';
+import { ValueMode, IndustryLens } from '../types';
 
 interface InputSheetModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialTab?: 'documents' | 'inputs' | 'ai_directive';
+  initialTab?: 'excel_sheets' | 'documents' | 'inputs' | 'ai_directive';
 }
 
 export const InputSheetModal: React.FC<InputSheetModalProps> = ({ 
   isOpen, 
   onClose,
-  initialTab = 'documents'
+  initialTab = 'excel_sheets'
 }) => {
-  const [activeTab, setActiveTab] = useState<'documents' | 'inputs' | 'ai_directive'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'excel_sheets' | 'documents' | 'inputs' | 'ai_directive'>(initialTab);
+  const [selectedExcelLens, setSelectedExcelLens] = useState<IndustryLens>('Retail');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<'ALL' | ValueMode>('ALL');
   const [filterType, setFilterType] = useState<'ALL' | 'WORD_INSTRUCTION' | 'NUMERIC'>('ALL');
+
 
   const filteredDocuments = useMemo(() => {
     return SOURCE_DOCUMENTS.filter(doc => {
@@ -57,6 +64,17 @@ export const InputSheetModal: React.FC<InputSheetModalProps> = ({
     });
   }, [searchQuery, filterMode, filterType]);
 
+  const filteredExcelFlags = useMemo(() => {
+    return ALL_FLAG_DEFINITIONS.filter(f => f.lens === selectedExcelLens).filter(f => {
+      const matchSearch = f.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          f.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          f.formula.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          f.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          f.description.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchSearch;
+    });
+  }, [selectedExcelLens, searchQuery]);
+
   if (!isOpen) return null;
 
   return (
@@ -69,34 +87,55 @@ export const InputSheetModal: React.FC<InputSheetModalProps> = ({
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800/80 bg-slate-900/60">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400">
-              <FileText className="h-5 w-5" />
+              <FileSpreadsheet className="h-5 w-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-white tracking-wide">SEC Ground Truth Input Sheet & TTM Mapping</h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-red-500/20 text-red-400 border border-red-500/30">
-                  27 SOURCE DOCS · 205+ RED FLAGS
+                <h2 className="text-lg font-bold text-white tracking-wide">SEC Ground Truth Input Sheet &amp; Master Excel Model</h2>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  7 LENSES · 210 FLAGS · 27 SOURCE DOCS
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Primary SEC source documents, TTM vs. Direct extraction requirements, and AI agent qualitative instruction directives.
+                Institutional Excel workbook: exact formulas, 7-sector red flags, TTM vs. Direct extraction requirements, and AI agent qualitative directives.
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => exportMasterExcelModel()}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition-all shadow-sm border border-emerald-400/30 cursor-pointer"
+              title="Download Master Excel Workbook (.xlsx)"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>Download Excel (.xlsx)</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* Tab Navigation & Controls */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-3 border-b border-slate-800/60 bg-slate-950/70">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+            <button
+              onClick={() => setActiveTab('excel_sheets')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 ${
+                activeTab === 'excel_sheets'
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900 border border-transparent'
+              }`}
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-400" />
+              Excel Worksheets (7 Lenses)
+            </button>
             <button
               onClick={() => setActiveTab('documents')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 ${
                 activeTab === 'documents'
                   ? 'bg-red-500/20 text-red-300 border border-red-500/40 shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-900 border border-transparent'
@@ -107,25 +146,25 @@ export const InputSheetModal: React.FC<InputSheetModalProps> = ({
             </button>
             <button
               onClick={() => setActiveTab('inputs')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 ${
                 activeTab === 'inputs'
                   ? 'bg-red-500/20 text-red-300 border border-red-500/40 shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-900 border border-transparent'
               }`}
             >
               <Layers className="h-3.5 w-3.5" />
-              Input Mapping & TTM Values
+              Input Mapping &amp; TTM Values
             </button>
             <button
               onClick={() => setActiveTab('ai_directive')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 ${
                 activeTab === 'ai_directive'
                   ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-slate-900 border border-transparent'
               }`}
             >
               <Bot className="h-3.5 w-3.5 text-purple-400" />
-              AI Agent Word-Instruction Directive
+              AI Agent Word Directives
             </button>
           </div>
 
@@ -157,6 +196,113 @@ export const InputSheetModal: React.FC<InputSheetModalProps> = ({
 
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* TAB 0: EXCEL WORKSHEETS (7 LENSES WITH EXACT FORMULAS & WORDING) */}
+          {activeTab === 'excel_sheets' && (
+            <div className="space-y-4">
+              {/* Lens Selector */}
+              <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl border border-slate-800 bg-slate-900/60">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-300">Select Industry Lens:</span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {(['Retail', 'Payments', 'SaaS', 'Banks', 'Tech Hardware', 'Healthcare', 'AI/Deep Tech'] as IndustryLens[]).map((lens) => (
+                      <button
+                        key={lens}
+                        onClick={() => setSelectedExcelLens(lens)}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                          selectedExcelLens === lens
+                            ? 'bg-red-500 text-white shadow-sm'
+                            : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
+                        }`}
+                      >
+                        {lens} (30 Flags)
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => exportMasterExcelModel()}
+                  className="flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-sm border border-emerald-400/30"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Export All 7 Lenses (.xlsx)</span>
+                </button>
+              </div>
+
+              {/* Table description */}
+              <div className="p-3 rounded-xl border border-emerald-500/20 bg-emerald-950/10 flex items-center justify-between text-xs text-slate-300">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                  <span>
+                    Displaying <strong className="text-white">{filteredExcelFlags.length} flags</strong> for <strong className="text-emerald-400">{selectedExcelLens}</strong> with exact wording and formulas identical to the master Excel model.
+                  </span>
+                </div>
+                <span className="text-[11px] font-mono text-slate-400">Sheet: {selectedExcelLens}</span>
+              </div>
+
+              {/* Excel Table */}
+              <div className="rounded-xl border border-slate-800 overflow-hidden bg-slate-900/40">
+                <div className="overflow-x-auto max-h-[50vh]">
+                  <table className="w-full text-left border-collapse text-xs font-sans">
+                    <thead className="bg-slate-950/90 text-slate-400 font-semibold sticky top-0 z-10 border-b border-slate-800">
+                      <tr>
+                        <th className="py-2.5 px-3 w-12 text-center">#</th>
+                        <th className="py-2.5 px-3 w-24">Flag ID</th>
+                        <th className="py-2.5 px-3 w-36">Category</th>
+                        <th className="py-2.5 px-3 min-w-[220px]">Flag Name &amp; Description</th>
+                        <th className="py-2.5 px-3 min-w-[260px] font-mono text-emerald-400">Exact Accounting Formula</th>
+                        <th className="py-2.5 px-3 min-w-[180px]">Benchmark Rule</th>
+                        <th className="py-2.5 px-3 w-28">Severity</th>
+                        <th className="py-2.5 px-3 w-20 text-center">Impact</th>
+                        <th className="py-2.5 px-3 min-w-[200px]">SEC Citation</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                      {filteredExcelFlags.map((flag, idx) => (
+                        <tr key={flag.code} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="py-2.5 px-3 text-center text-slate-500 font-mono">{idx + 1}</td>
+                          <td className="py-2.5 px-3 font-mono font-bold text-red-400">{flag.code}</td>
+                          <td className="py-2.5 px-3">
+                            <span className="px-2 py-0.5 rounded bg-slate-800 text-[11px] text-slate-300">
+                              {flag.category}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <div className="font-semibold text-white">{flag.title}</div>
+                            <div className="text-[11px] text-slate-400 mt-0.5 line-clamp-2">{flag.description}</div>
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-[11px] text-emerald-300 bg-emerald-950/10 rounded">
+                            {flag.formula}
+                          </td>
+                          <td className="py-2.5 px-3 text-[11px] text-slate-400">
+                            {flag.benchmarkRule}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                              flag.defaultSeverity === 'Critical Anomaly'
+                                ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                : flag.defaultSeverity === 'Warning'
+                                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            }`}>
+                              {flag.defaultSeverity}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-center font-mono font-bold text-red-400">
+                            -{flag.scoreImpact}
+                          </td>
+                          <td className="py-2.5 px-3 text-[11px] text-slate-400 font-mono">
+                            {flag.secDisclosureCitation}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* TAB 1: 27 SOURCE DOCUMENTS */}
           {activeTab === 'documents' && (
             <div className="space-y-4">

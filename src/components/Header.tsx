@@ -11,7 +11,8 @@ import {
   LayoutDashboard,
   CheckCircle2,
   AlertCircle,
-  User
+  User,
+  FileSpreadsheet
 } from 'lucide-react';
 import { CompanyForensicProfile, UserSession } from '../types';
 import { isValidStockTicker } from '../data/companyData';
@@ -27,6 +28,7 @@ interface HeaderProps {
   onOpenProfileModal?: () => void;
   investigationCount: number;
   onExportPdf: () => void;
+  onExportExcel?: () => void;
   isExportingPdf: boolean;
   userSession: UserSession | null;
   onNavigateToLanding: () => void;
@@ -42,6 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenProfileModal,
   investigationCount,
   onExportPdf,
+  onExportExcel,
   isExportingPdf,
   userSession,
   onNavigateToLanding,
@@ -250,6 +253,19 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             )}
           </button>
+
+          {/* Export Excel Model */}
+          {onExportExcel && (
+            <button
+              onClick={onExportExcel}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700/80 hover:bg-emerald-600 text-white text-xs font-sans font-medium rounded-lg shadow-sm transition-all border border-emerald-500/30 cursor-pointer"
+              title="Download complete Master Excel Model (.xlsx) with all 7 Industry Lenses and 27 SEC Source Documents"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-200" />
+              <span className="hidden sm:inline">Export Excel</span>
+              <span className="sm:hidden">XLSX</span>
+            </button>
+          )}
 
           {/* Export PDF */}
           <button
