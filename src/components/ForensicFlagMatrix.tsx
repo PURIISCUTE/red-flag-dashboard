@@ -14,11 +14,9 @@ import {
   Layers,
   Scale,
   Bot,
-  FileSpreadsheet,
   CheckCircle2,
   Clock,
-  Database,
-  Download
+  Database
 } from 'lucide-react';
 import { 
   ForensicFlag, 
@@ -88,6 +86,7 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
   const criticalCount = evaluatedFlags.filter((f) => f.status === 'Critical Anomaly').length;
   const warningCount = evaluatedFlags.filter((f) => f.status === 'Warning').length;
   const healthyCount = evaluatedFlags.filter((f) => f.status === 'Healthy').length;
+  const unavailableCount = evaluatedFlags.filter((f) => f.status === 'Data Unavailable').length;
   const wordInstructionCount = evaluatedFlags.filter((f) => f.thresholdType === 'word_instruction').length;
   const numericCount = evaluatedFlags.length - wordInstructionCount;
 
@@ -118,7 +117,7 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
             onClick={() => setIsInputSheetOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1 bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-500/40 rounded-lg font-semibold transition-all shadow-sm cursor-pointer"
           >
-            <FileSpreadsheet className="h-3.5 w-3.5 text-red-400" />
+            <FileText className="h-3.5 w-3.5 text-red-400" />
             <span>SEC Input Sheet &amp; TTM Guide</span>
           </button>
 
@@ -168,6 +167,19 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
               <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
               <span>Clean ({healthyCount})</span>
             </button>
+            {unavailableCount > 0 && (
+              <button
+                onClick={() => setSeverityFilter('Data Unavailable')}
+                className={`px-2.5 py-1 rounded-lg transition-all font-medium flex items-center gap-1.5 ${
+                  severityFilter === 'Data Unavailable'
+                    ? 'bg-slate-700/60 text-slate-200 border border-slate-500/40'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span className="h-2 w-2 rounded-full bg-slate-400"></span>
+                <span>Data Unavailable ({unavailableCount})</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -326,6 +338,8 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
                           ? 'bg-red-500/15 text-red-400 border border-red-500/30'
                           : flag.status === 'Warning'
                           ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                          : flag.status === 'Data Unavailable'
+                          ? 'bg-slate-700/40 text-slate-300 border border-slate-600/50'
                           : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
                       }`}
                     >
@@ -335,6 +349,8 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
                             ? 'bg-red-400'
                             : flag.status === 'Warning'
                             ? 'bg-amber-400'
+                            : flag.status === 'Data Unavailable'
+                            ? 'bg-slate-400'
                             : 'bg-emerald-400'
                         }`}
                       ></span>
@@ -601,6 +617,8 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
                             ? 'bg-red-500/20 text-red-400 border border-red-500/30'
                             : activeFlag.status === 'Warning'
                             ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            : activeFlag.status === 'Data Unavailable'
+                            ? 'bg-slate-700/40 text-slate-300 border border-slate-600/50'
                             : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                         }`}>
                           {activeFlag.status}

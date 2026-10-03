@@ -240,7 +240,7 @@ export const SOURCE_DOCUMENTS: SourceDocumentEntry[] = [
     code: 'Ext',
     name: 'External Sources (non-filing)',
     contains: 'Patent databases (USPTO), ClinicalTrials.gov (drug trial status), FDIC/OCC enforcement orders, Yahoo Finance market cap/beta, 13D/G filings',
-    typicalLocation: 'Yahoo Finance API, ClinicalTrials.gov, USPTO Patent Registry, Kaggle Audited Fraud Distributions',
+    typicalLocation: 'Yahoo Finance API, ClinicalTrials.gov, USPTO Patent Registry, SEC EDGAR Company Facts',
     valueMode: 'Direct Source Document',
     ttmNotes: 'Point-in-time external ground truth: Market capitalization, beta, peer DPO/DIO percentiles, and FDA clinical trial phase verification.',
     relevantSectors: 'All Sectors (Healthcare, AI, Banks, Hardware)'

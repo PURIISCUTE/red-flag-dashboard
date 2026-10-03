@@ -113,13 +113,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     };
   }, [baseCompanyProfile.ticker, baseCompanyProfile.name, baseCompanyProfile.sector, baseCompanyProfile.lens]);
 
-  // Dynamically evaluated profile according to active industry lens
+  // Dynamically evaluated profile according to active industry lens and live Yahoo market telemetry
   const companyProfile = useMemo(() => {
+    let profile = baseCompanyProfile;
     if (selectedLens && selectedLens !== baseCompanyProfile.lens) {
-      return applyIndustryLensToProfile(baseCompanyProfile, selectedLens);
+      profile = applyIndustryLensToProfile(baseCompanyProfile, selectedLens);
     }
-    return baseCompanyProfile;
-  }, [baseCompanyProfile, selectedLens]);
+    if (liveQuote && liveQuote.isLiveNetwork) {
+      profile = {
+        ...profile,
+        stockPrice: liveQuote.regularMarketPrice,
+        priceChangePercent: liveQuote.regularMarketChangePercent,
+        marketCap: liveQuote.marketCap ?? profile.marketCap
+      };
+    }
+    return profile;
+  }, [baseCompanyProfile, selectedLens, liveQuote]);
 
   // Re-run AI classification on demand
   const handleReAskAiClassification = () => {
@@ -372,11 +381,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <button
               onClick={handleReAskAiClassification}
               disabled={isClassifyingAi}
-              className="ml-1 flex items-center gap-1 px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 shadow-sm"
-              title="Instruct AI to classify company into 1 of the 7 industries"
+              className="ml-1 flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-50 shadow-sm"
+              title="Instruct GPT-4o to classify company into 1 of the 7 industries"
             >
-              <Sparkles className="h-3 w-3" />
-              <span>Ask AI to Pick</span>
+              <Sparkles className="h-3 w-3 text-purple-200" />
+              <span>{isClassifyingAi ? 'GPT-4o Classifying...' : 'Ask GPT-4o to Pick'}</span>
             </button>
           </div>
         </div>

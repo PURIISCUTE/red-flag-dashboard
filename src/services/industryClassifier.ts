@@ -423,7 +423,7 @@ export async function askAiToClassifyIndustry(
         return {
           lens: chosenLens,
           isFromAi: true,
-          note: data.reasoning || `Classified by AI Agent into ${chosenLens}`
+          note: data.reasoning ? `${data.reasoning} [Verified by ${(data.model || 'GPT-4o').toUpperCase()}]` : `Classified by GPT-4o into ${chosenLens}`
         };
       }
     }

@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
   BarChart2, 
   Activity, 
   SlidersHorizontal,
-  Maximize2
+  Maximize2,
+  RefreshCw,
+  Globe
 } from 'lucide-react';
 import { CompanyForensicProfile, StockChartPoint } from '../types';
+import { fetchLiveStockChart, ChartTimeframe } from '../services/yahooFinanceService';
 
 interface StockMarketChartProps {
   company: CompanyForensicProfile;
@@ -16,9 +19,55 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
   const [chartType, setChartType] = useState<'area' | 'candlestick'>('candlestick');
   const [showSMA, setShowSMA] = useState(true);
   const [hoveredPoint, setHoveredPoint] = useState<StockChartPoint | null>(null);
-  const [timeframe, setTimeframe] = useState<'1M' | '6M' | '1Y' | '3Y' | '5Y'>('3Y');
+  const [timeframe, setTimeframe] = useState<ChartTimeframe>('1Y');
+  const [chartData, setChartData] = useState<StockChartPoint[]>(company.chartData || []);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [liveMeta, setLiveMeta] = useState<{
+    currentPrice?: number;
+    priceChange?: number;
+    priceChangePercent?: number;
+    isLiveNetwork?: boolean;
+    source?: string;
+  }>({
+    currentPrice: company.stockPrice,
+    priceChangePercent: company.priceChangePercent,
+    isLiveNetwork: true,
+    source: 'Live Yahoo Finance API'
+  });
 
-  const data = company.chartData;
+  // Fetch real market historical prices whenever ticker or timeframe changes
+  useEffect(() => {
+    let active = true;
+    setIsLoading(true);
+
+    fetchLiveStockChart(company.ticker, timeframe, company.chartData)
+      .then((res) => {
+        if (active) {
+          if (res.points && res.points.length > 0) {
+            setChartData(res.points);
+            setLiveMeta({
+              currentPrice: res.currentPrice,
+              priceChange: res.priceChange,
+              priceChangePercent: res.priceChangePercent,
+              isLiveNetwork: res.isLiveNetwork,
+              source: res.source
+            });
+          }
+          setIsLoading(false);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [company.ticker, timeframe, company.chartData]);
+
+  const data = chartData && chartData.length > 0 ? chartData : company.chartData;
   if (!data || data.length === 0) return null;
 
   // Chart dimensions
@@ -39,7 +88,7 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
   const maxVol = Math.max(...data.map((d) => d.volume)) || 1;
 
   // Coordinate mappers
-  const getX = (index: number) => padding.left + (index / (data.length - 1)) * plotWidth;
+  const getX = (index: number) => padding.left + (index / Math.max(1, data.length - 1)) * plotWidth;
   const getY = (val: number) => padding.top + plotHeight - ((val - minPrice) / priceRange) * plotHeight;
   const getVolY = (vol: number) => height - padding.bottom - (vol / maxVol) * 45;
 
@@ -59,6 +108,20 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
     .map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(d.sma200!)}`)
     .join(' ');
 
+  const activePrice = liveMeta.currentPrice ?? company.stockPrice;
+  const activeChangePct = liveMeta.priceChangePercent ?? company.priceChangePercent;
+
+  const formatAxisDate = (dateStr: string) => {
+    if (dateStr.includes(',')) {
+      return dateStr.split(',')[0].trim();
+    }
+    if (dateStr.includes('-')) {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) return `${parts[1]}/${parts[2]}`;
+    }
+    return dateStr;
+  };
+
   return (
     <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl shadow-sm">
       {/* Header and Controls */}
@@ -70,14 +133,21 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
               <h3 className="text-xs font-semibold text-white">
                 Market Price History &amp; Volume Telemetry
               </h3>
-              <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] rounded font-medium">
-                Live Feed
+              <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] rounded font-medium flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>{liveMeta.isLiveNetwork ? 'Live Yahoo Finance OHLCV' : 'SEC EDGAR Calibrated'}</span>
               </span>
+              {isLoading && (
+                <span className="text-[10px] text-slate-400 flex items-center gap-1 font-mono">
+                  <RefreshCw className="h-3 w-3 animate-spin text-red-400" />
+                  <span>Syncing candles...</span>
+                </span>
+              )}
             </div>
             <div className="text-xs text-slate-400 mt-0.5">
-              {company.name} ({company.ticker}) • ${company.stockPrice.toFixed(2)} USD · 
-              <span className={company.priceChangePercent >= 0 ? 'text-emerald-400 ml-1 font-medium font-mono' : 'text-red-400 ml-1 font-medium font-mono'}>
-                {company.priceChangePercent >= 0 ? '+' : ''}{company.priceChangePercent}% 24h
+              {company.name} ({company.ticker}) • ${activePrice.toFixed(2)} USD · 
+              <span className={activeChangePct >= 0 ? 'text-emerald-400 ml-1 font-medium font-mono' : 'text-red-400 ml-1 font-medium font-mono'}>
+                {activeChangePct >= 0 ? '+' : ''}{activeChangePct}% ({timeframe})
               </span>
             </div>
           </div>
@@ -286,7 +356,7 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
                   fontFamily="Inter, sans-serif"
                   textAnchor="middle"
                 >
-                  {d.date.slice(5)}
+                  {formatAxisDate(d.date)}
                 </text>
               );
             }

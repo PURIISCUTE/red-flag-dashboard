@@ -7,9 +7,9 @@ export type IndustryLens =
   | 'Healthcare' 
   | 'AI/Deep Tech';
 
-export type FlagSeverity = 'Critical Anomaly' | 'Warning' | 'Healthy';
+export type FlagSeverity = 'Critical Anomaly' | 'Warning' | 'Healthy' | 'Data Unavailable';
 
-export type DataSourcePriority = 'SEC EDGAR (P1)' | 'Forensic Rule (P2)' | 'Yahoo Finance (P3)' | 'Kaggle Benchmark (P4)';
+export type DataSourcePriority = 'SEC EDGAR (P1)' | 'Forensic Rule (P2)' | 'Yahoo Finance (P3)';
 
 export type ThresholdType = 'numeric' | 'word_instruction';
 

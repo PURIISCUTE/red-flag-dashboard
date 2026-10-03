@@ -1757,7 +1757,18 @@ function generateDeterministicFlags(profile: CompanyForensicProfile): ForensicFl
       }
     }
 
-    const curVal = status === 'Critical Anomaly'
+    // Specific PDF Rule: Structural Note (Page 8)
+    // Non-GAAP voluntary metrics (e.g. RET-29 Same-Store Sales) or buried liabilities (RET-03, RET-04)
+    // show "Data Unavailable" rather than a false Green when disclosure is absent
+    if (def.defaultSeverity === 'Data Unavailable' || def.code === 'RET-29' || def.code === 'RET-03' || def.code === 'RET-04') {
+      if (flagHash > 35) {
+        status = 'Data Unavailable';
+      }
+    }
+
+    const curVal = status === 'Data Unavailable'
+      ? 'DATA UNAVAILABLE (Buried in Note)'
+      : status === 'Critical Anomaly'
       ? 'BREACH (+3.4σ)'
       : status === 'Warning'
       ? 'ELEVATED (+1.8σ)'

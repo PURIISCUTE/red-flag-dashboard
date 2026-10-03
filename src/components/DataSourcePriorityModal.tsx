@@ -227,34 +227,18 @@ export const DataSourcePriorityModal: React.FC<DataSourcePriorityModalProps> = (
               <div className="flex items-center justify-between mb-1">
                 <span className="font-bold text-amber-400 text-xs flex items-center gap-1.5">
                   <Globe className="h-4 w-4" />
-                  PRIORITY 3: YAHOO FINANCE API (MARKET DATA AUGMENTATION)
+                  PRIORITY 3: YAHOO FINANCE API (REAL-TIME MARKET TELEMETRY &amp; VALUATION)
                 </span>
                 <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 text-[10px] font-bold rounded">
-                  REAL-TIME QUOTES
+                  LIVE MARKET DATA
                 </span>
               </div>
               <p className="text-slate-300 text-xs leading-relaxed">
-                Provides real-time equity market capitalization, trailing twelve months (TTM) income adjustments between filing cycles, stock price volatility (Beta), and historical candlestick price history for chart rendering.
+                Primary market data collection engine providing real-time equity market capitalization, trailing twelve months (TTM) income adjustments between filing cycles, stock price volatility (Beta), intraday volume, shares outstanding, enterprise value, and live candlestick price feeds.
               </p>
               <div className="mt-1.5 text-[10px] text-slate-500 font-mono">
-                Endpoint: <code className="text-amber-400">query1.finance.yahoo.com/v8/finance/chart/&#123;ticker&#125;</code>
+                Endpoints: <code className="text-amber-400">query1.finance.yahoo.com/v8/finance/chart/&#123;ticker&#125;</code> · <code className="text-amber-400">/api/quote/&#123;ticker&#125;</code>
               </div>
-            </div>
-
-            {/* Priority 4 */}
-            <div className="p-3 bg-slate-950 border-l-4 border-sky-500 border-y border-r border-slate-800 rounded-r-lg">
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold text-sky-400 text-xs flex items-center gap-1.5">
-                  <Database className="h-4 w-4" />
-                  PRIORITY 4: KAGGLE BENCHMARKS &amp; HISTORICAL FRAUD DATASETS
-                </span>
-                <span className="px-1.5 py-0.5 bg-sky-500/20 text-sky-300 text-[10px] font-bold rounded">
-                  SECTOR P50 DISTRIBUTIONS
-                </span>
-              </div>
-              <p className="text-slate-300 text-xs leading-relaxed">
-                Supplies cross-sectional fraud distributions, peer industry quartile cutoffs (P25, P50, P75, P90), and historical accounting fraud benchmarks (Enron, WorldCom, Wirecard, Silicon Valley Bank).
-              </p>
             </div>
           </div>
         )}

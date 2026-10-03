@@ -65,7 +65,7 @@ export const LiveSecScanModal: React.FC<LiveSecScanModalProps> = ({
         ...prev,
         `[RULES] Evaluating 30 red flag anomaly checkpoints for lens: ${company.lens.toUpperCase()}`,
         `[HEURISTIC] Calculating Beneish M-Score: DSRI, GMI, AQI, SGI, DEPI, SGAI, LVGI, TATA`,
-        `[KAGGLE] Cross-referencing 20,000+ audited US corporate financial fraud baseline distributions`
+        `[YAHOO FINANCE] Ingesting real-time market equity capitalization, volume liquidity, and peer sector valuation multiples`
       ]);
     }, 1800);
 
@@ -156,7 +156,7 @@ export const LiveSecScanModal: React.FC<LiveSecScanModalProps> = ({
             <div className={`p-2 border ${stage >= 4 ? 'border-[#38A169] bg-[#0e1d18] text-white' : 'border-[#1b2233] text-[#525f7a]'}`}>
               <div className="flex items-center gap-1 mb-1">
                 <ShieldCheck className="h-3 w-3 text-[#38A169]" />
-                <span className="font-bold">4. Kaggle Calib</span>
+                <span className="font-bold">4. Yahoo Live Sync</span>
               </div>
               <span>Verified Clean</span>
             </div>
