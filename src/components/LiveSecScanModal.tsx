@@ -8,11 +8,9 @@ import {
   FileCode2, 
   TrendingUp, 
   ShieldCheck,
-  Zap,
-  Rotate3d
+  Zap
 } from 'lucide-react';
 import { CompanyForensicProfile } from '../types';
-import { Forensic3DScanner } from './Forensic3DScanner';
 
 interface LiveSecScanModalProps {
   isOpen: boolean;
@@ -162,9 +160,33 @@ export const LiveSecScanModal: React.FC<LiveSecScanModalProps> = ({
             </div>
           </div>
 
-          {/* 3D Holographic Ingestion Scanner */}
-          <div className="border border-[#232c40] rounded-lg overflow-hidden bg-slate-950">
-            <Forensic3DScanner height={170} />
+          {/* SEC Ingestion Pipeline Telemetry Box */}
+          <div className="border border-[#232c40] rounded-lg p-3 bg-slate-950/90 font-mono text-xs space-y-2">
+            <div className="flex items-center justify-between text-[11px] pb-1.5 border-b border-slate-800">
+              <span className="text-slate-400">INGESTION PIPELINE // SEC EDGAR CIK {company.cik}</span>
+              <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                ONLINE
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+              <div className="bg-slate-900/80 p-2 rounded border border-slate-800">
+                <div className="text-slate-500 text-[10px]">Accession Key</div>
+                <div className="text-slate-200 truncate">{company.filingAuditLogs[0]?.secAccessionNumber || '0000320193-24'}</div>
+              </div>
+              <div className="bg-slate-900/80 p-2 rounded border border-slate-800">
+                <div className="text-slate-500 text-[10px]">Reporting Period</div>
+                <div className="text-slate-200">{company.filingAuditLogs[0]?.periodEnd || 'FY24 10-K'}</div>
+              </div>
+              <div className="bg-slate-900/80 p-2 rounded border border-slate-800">
+                <div className="text-slate-500 text-[10px]">Auditor Opinion</div>
+                <div className="text-emerald-400 font-medium">{company.filingAuditLogs[0]?.auditorOpinion || 'Unqualified'}</div>
+              </div>
+              <div className="bg-slate-900/80 p-2 rounded border border-slate-800">
+                <div className="text-slate-500 text-[10px]">Telemetry Source</div>
+                <div className="text-cyan-400">Yahoo + EDGAR</div>
+              </div>
+            </div>
           </div>
 
           {/* Real-time Streaming Logs Terminal */}

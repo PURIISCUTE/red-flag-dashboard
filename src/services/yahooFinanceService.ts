@@ -20,15 +20,21 @@ export interface LiveYahooQuote {
   isLiveNetwork: boolean;
 }
 
-export type ChartTimeframe = '1M' | '6M' | '1Y' | '3Y' | '5Y';
+export type ChartTimeframe = '1D' | '5D' | '1M' | '6M' | '1Y' | '5Y';
 
 export interface LiveChartResult {
   ticker: string;
   timeframe: ChartTimeframe;
   points: StockChartPoint[];
   currentPrice: number;
+  periodStartPrice: number;
+  previousClose: number;
   priceChange: number;
   priceChangePercent: number;
+  dayPriceChange: number;
+  dayPriceChangePercent: number;
+  highPrice: number;
+  lowPrice: number;
   currency: string;
   exchangeName: string;
   source: 'Live Yahoo Finance API' | 'SEC EDGAR XBRL Calibrated Model';
@@ -162,11 +168,32 @@ function parseYahooChartResponse(
       const v = volumes[i] ?? 0;
 
       const dateObj = new Date(timestamps[i] * 1000);
-      const dateStr = dateObj.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: '2-digit'
-      });
+      let dateStr = '';
+      if (timeframe === '1D') {
+        dateStr = dateObj.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit'
+        });
+      } else if (timeframe === '5D') {
+        dateStr = `${dateObj.toLocaleDateString('en-US', {
+          month: 'numeric',
+          day: 'numeric'
+        })} ${dateObj.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit'
+        })}`;
+      } else if (timeframe === '1M' || timeframe === '6M' || timeframe === '1Y') {
+        dateStr = dateObj.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: '2-digit'
+        });
+      } else {
+        dateStr = dateObj.toLocaleDateString('en-US', {
+          month: 'short',
+          year: '2-digit'
+        });
+      }
 
       points.push({
         date: dateStr,
@@ -200,17 +227,35 @@ function parseYahooChartResponse(
     const latestPrice = meta.regularMarketPrice 
       ? Math.round(Number(meta.regularMarketPrice) * 100) / 100 
       : points[points.length - 1].close;
-    const prevClose = meta.previousClose || meta.chartPreviousClose || points[0].close;
-    const priceChange = Math.round((latestPrice - prevClose) * 100) / 100;
-    const priceChangePercent = Math.round(((latestPrice - prevClose) / (prevClose || 1)) * 10000) / 100;
+    const periodStartPrice = points[0].close;
+    const prevClose = meta.previousClose || meta.chartPreviousClose || periodStartPrice;
+    
+    // Timeframe total return
+    const priceChange = Math.round((latestPrice - periodStartPrice) * 100) / 100;
+    const priceChangePercent = Math.round(((latestPrice - periodStartPrice) / (periodStartPrice || 1)) * 10000) / 100;
+
+    // 1-Day change against previous close
+    const dayPriceChange = Math.round((latestPrice - prevClose) * 100) / 100;
+    const dayPriceChangePercent = Math.round(((latestPrice - prevClose) / (prevClose || 1)) * 10000) / 100;
+
+    const allHighs = points.map(p => p.high);
+    const allLows = points.map(p => p.low);
+    const highPrice = Math.max(...allHighs);
+    const lowPrice = Math.min(...allLows);
 
     return {
       ticker,
       timeframe,
       points,
       currentPrice: latestPrice,
+      periodStartPrice,
+      previousClose: prevClose,
       priceChange,
       priceChangePercent,
+      dayPriceChange,
+      dayPriceChangePercent,
+      highPrice,
+      lowPrice,
       currency: meta.currency || 'USD',
       exchangeName: meta.exchangeName || 'NYSE / NASDAQ',
       source: 'Live Yahoo Finance API',
@@ -223,7 +268,7 @@ function parseYahooChartResponse(
 
 /**
  * Fetches real historical stock market OHLCV price feeds from Yahoo Finance
- * across multiple timeframe periods (1M, 6M, 1Y, 3Y, 5Y).
+ * across multiple timeframe periods (1D, 5D, 1M, 6M, 1Y, 5Y).
  */
 export async function fetchLiveStockChart(
   ticker: string,
@@ -234,7 +279,13 @@ export async function fetchLiveStockChart(
   
   let range = '1y';
   let interval = '1d';
-  if (timeframe === '1M') {
+  if (timeframe === '1D') {
+    range = '1d';
+    interval = '5m';
+  } else if (timeframe === '5D') {
+    range = '5d';
+    interval = '15m';
+  } else if (timeframe === '1M') {
     range = '1mo';
     interval = '1d';
   } else if (timeframe === '6M') {
@@ -243,9 +294,6 @@ export async function fetchLiveStockChart(
   } else if (timeframe === '1Y') {
     range = '1y';
     interval = '1d';
-  } else if (timeframe === '3Y') {
-    range = '3y';
-    interval = '1wk';
   } else if (timeframe === '5Y') {
     range = '5y';
     interval = '1wk';
@@ -254,7 +302,7 @@ export async function fetchLiveStockChart(
   // 1. Try local server proxy endpoint
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4500);
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
 
     const response = await fetch(
       `/api/chart/${cleanTicker}?range=${range}&interval=${interval}`,
@@ -276,7 +324,7 @@ export async function fetchLiveStockChart(
   // 2. Direct query fallback
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
 
     const response = await fetch(
       `https://query1.finance.yahoo.com/v8/finance/chart/${cleanTicker}?range=${range}&interval=${interval}`,
@@ -307,8 +355,14 @@ export async function fetchLiveStockChart(
     timeframe,
     points: basePoints,
     currentPrice: latestClose,
+    periodStartPrice: firstClose,
+    previousClose: firstClose,
     priceChange: Math.round(diff * 100) / 100,
     priceChangePercent: diffPct,
+    dayPriceChange: Math.round(diff * 100) / 100,
+    dayPriceChangePercent: diffPct,
+    highPrice: Math.max(...(basePoints.map(p => p.high) || [latestClose])),
+    lowPrice: Math.min(...(basePoints.map(p => p.low) || [firstClose])),
     currency: 'USD',
     exchangeName: 'NYSE / NASDAQ',
     source: 'SEC EDGAR XBRL Calibrated Model',

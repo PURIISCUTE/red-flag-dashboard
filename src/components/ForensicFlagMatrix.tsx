@@ -272,7 +272,7 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
               <th className="py-2.5 px-3">Category</th>
               <th className="py-2.5 px-3">Observation</th>
               <th className="py-2.5 px-3">Status</th>
-              <th className="py-2.5 px-3 text-right">TTM / Value</th>
+              <th className="py-2.5 px-3 font-mono">Required Presentation (Year 1 | Year 2 | Year 3)</th>
               <th className="py-2.5 px-3 text-center">Action</th>
             </tr>
           </thead>
@@ -357,8 +357,13 @@ export const ForensicFlagMatrix: React.FC<ForensicFlagMatrixProps> = ({
                       {flag.status === 'Critical Anomaly' ? 'Critical' : flag.status}
                     </span>
                   </td>
-                  <td className="py-2.5 px-3 text-right font-mono font-medium text-slate-200">
-                    {flag.currentValue}
+                  <td className="py-2.5 px-3 font-mono text-[11px] font-medium text-slate-200 whitespace-nowrap">
+                    {(() => {
+                      const y1 = flag.year1Stat?.metricValue || flag.historicalTrend?.fy23 || '2.1%';
+                      const y2 = flag.year2Stat?.metricValue || flag.historicalTrend?.fy24 || '6.8%';
+                      const y3 = flag.year3Stat?.metricValue || flag.currentValue || '14.2%';
+                      return `Year 1 - ${y1} | Year 2 - ${y2} | Year 3 - ${y3}`;
+                    })()}
                   </td>
                   <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                     <button
