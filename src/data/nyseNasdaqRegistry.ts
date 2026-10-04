@@ -254,8 +254,77 @@ export function getNyseNasdaqCompany(rawTicker: string): NyseNasdaqCompany | und
 }
 
 /**
+ * Popular search aliases, former tickers, and conversational company names.
+ */
+const POPULAR_SEARCH_ALIASES: Record<string, string[]> = {
+  GOOGLE: ['GOOGL', 'GOOG'],
+  ALPHABET: ['GOOGL', 'GOOG'],
+  FACEBOOK: ['META'],
+  FB: ['META'],
+  BERKSHIRE: ['BRK.B', 'BRK.A'],
+  BUFFETT: ['BRK.B', 'BRK.A'],
+  WARREN: ['BRK.B'],
+  BRK: ['BRK.B', 'BRK.A'],
+  SQUARE: ['SQ'],
+  BLOCK: ['SQ'],
+  DISNEY: ['DIS'],
+  BOEING: ['BA'],
+  COCA: ['KO'],
+  COKE: ['KO'],
+  PEPSI: ['PEP'],
+  PEPSICO: ['PEP'],
+  ELI: ['LLY'],
+  LILLY: ['LLY'],
+  JOHNSON: ['JNJ'],
+  'J&J': ['JNJ'],
+  BROADCOM: ['AVGO'],
+  AVAGO: ['AVGO'],
+  SUPERMICRO: ['SMCI'],
+  'SUPER MICRO': ['SMCI'],
+  GOLDMAN: ['GS'],
+  SACHS: ['GS'],
+  JPMORGAN: ['JPM'],
+  CHASE: ['JPM'],
+  WALMART: ['WMT'],
+  TARGET: ['TGT'],
+  COSTCO: ['COST'],
+  STARBUCKS: ['SBUX'],
+  MCDONALDS: ['MCD'],
+  NETFLIX: ['NFLX'],
+  CHIPOTLE: ['CMG'],
+  PALANTIR: ['PLTR'],
+  NVIDIA: ['NVDA'],
+  TESLA: ['TSLA'],
+  MICROSOFT: ['MSFT'],
+  APPLE: ['AAPL'],
+  AMAZON: ['AMZN'],
+  PFIZER: ['PFE'],
+  INTEL: ['INTC'],
+  AMD: ['AMD'],
+  ORACLE: ['ORCL'],
+  SALESFORCE: ['CRM'],
+  UBER: ['UBER'],
+  AIRBNB: ['ABNB'],
+  DOORDASH: ['DASH'],
+  SHOPIFY: ['SHOP'],
+  SPOTIFY: ['SPOT'],
+  ROBLOX: ['RBLX'],
+  CROWDSTRIKE: ['CRWD'],
+  SNOWFLAKE: ['SNOW'],
+  CLOUDFLARE: ['NET'],
+  DATADOG: ['DDOG'],
+  MONGODB: ['MDB'],
+  ROBINHOOD: ['HOOD'],
+  SOFI: ['SOFI'],
+  COINBASE: ['COIN'],
+  UNITEDHEALTH: ['UNH'],
+  EXXON: ['XOM'],
+  CHEVRON: ['CVX']
+};
+
+/**
  * Smart resolver that turns either a ticker (e.g. "AAPL", "PLTR") or 
- * a company name (e.g. "Apple", "Palantir", "Microsoft") into a valid ticker.
+ * a company name (e.g. "Apple", "Palantir", "Microsoft", "Google") into a valid ticker.
  * Returns null if the input is random text or not found in NYSE/NASDAQ.
  */
 export function resolveQueryToTicker(input: string): string | null {
@@ -264,6 +333,15 @@ export function resolveQueryToTicker(input: string): string | null {
   if (isTickerInNyseOrNasdaq(clean)) {
     return clean;
   }
+
+  // Check alias dictionary
+  const aliasMatch = POPULAR_SEARCH_ALIASES[clean];
+  if (aliasMatch && aliasMatch.length > 0) {
+    for (const t of aliasMatch) {
+      if (isTickerInNyseOrNasdaq(t)) return t;
+    }
+  }
+
   // Try searching in case user typed full or partial company name
   const matches = searchNyseNasdaqCompanies(input, 1);
   if (matches.length > 0 && matches[0]?.ticker && isTickerInNyseOrNasdaq(matches[0].ticker)) {
@@ -274,7 +352,7 @@ export function resolveQueryToTicker(input: string): string | null {
 
 /**
  * Real-time fast autocomplete for NYSE & NASDAQ companies.
- * Queries across 8,000+ real tickers and company titles safely.
+ * Queries across 8,000+ real tickers and company titles safely with intelligent ranking.
  */
 export function searchNyseNasdaqCompanies(query: string, maxResults = 8): NyseNasdaqCompany[] {
   if (!query) return [];
@@ -284,13 +362,29 @@ export function searchNyseNasdaqCompanies(query: string, maxResults = 8): NyseNa
   const source = fullRegistryCache || TOP_NYSE_NASDAQ_COMPANIES;
   const entries = Object.values(source);
 
-  // Exact ticker matches first
-  const exact: NyseNasdaqCompany[] = [];
+  // Match priority tiers
+  const exactTicker: NyseNasdaqCompany[] = [];
   const startsWithTicker: NyseNasdaqCompany[] = [];
+  const aliasMatches: NyseNasdaqCompany[] = [];
+  const startsWithName: NyseNasdaqCompany[] = [];
+  const wordStartsWithName: NyseNasdaqCompany[] = [];
   const containsTicker: NyseNasdaqCompany[] = [];
-  const nameMatches: NyseNasdaqCompany[] = [];
+  const containsName: NyseNasdaqCompany[] = [];
 
   const seen = new Set<string>();
+
+  // 1. Check aliases first for direct intent (e.g. "google" -> GOOGL)
+  for (const [aliasKey, tickers] of Object.entries(POPULAR_SEARCH_ALIASES)) {
+    if (aliasKey === q || aliasKey.startsWith(q)) {
+      for (const t of tickers) {
+        const item = getNyseNasdaqCompany(t);
+        if (item && !seen.has(item.ticker)) {
+          aliasMatches.push(item);
+          seen.add(item.ticker);
+        }
+      }
+    }
+  }
 
   for (const item of entries) {
     if (!item) continue;
@@ -302,24 +396,39 @@ export function searchNyseNasdaqCompanies(query: string, maxResults = 8): NyseNa
     const nUpper = (item.name || '').toUpperCase();
 
     if (tUpper === q) {
-      exact.push(item);
+      exactTicker.push(item);
       seen.add(ticker);
     } else if (tUpper.startsWith(q)) {
       startsWithTicker.push(item);
+      seen.add(ticker);
+    } else if (nUpper.startsWith(q)) {
+      startsWithName.push(item);
+      seen.add(ticker);
+    } else if (nUpper.includes(' ' + q)) {
+      wordStartsWithName.push(item);
       seen.add(ticker);
     } else if (tUpper.includes(q)) {
       containsTicker.push(item);
       seen.add(ticker);
     } else if (nUpper.includes(q)) {
-      nameMatches.push(item);
+      containsName.push(item);
       seen.add(ticker);
     }
 
-    if (exact.length + startsWithTicker.length + containsTicker.length + nameMatches.length >= maxResults * 4) {
+    if (exactTicker.length + startsWithTicker.length + aliasMatches.length + startsWithName.length + wordStartsWithName.length >= maxResults * 3) {
       break;
     }
   }
 
-  const combined = [...exact, ...startsWithTicker, ...containsTicker, ...nameMatches];
+  const combined = [
+    ...exactTicker,
+    ...startsWithTicker,
+    ...aliasMatches,
+    ...startsWithName,
+    ...wordStartsWithName,
+    ...containsTicker,
+    ...containsName
+  ];
+
   return combined.slice(0, maxResults);
 }
