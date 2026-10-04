@@ -1,19 +1,11 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   TrendingUp, 
-  TrendingDown,
-  BarChart2, 
-  Activity, 
-  SlidersHorizontal,
+  TrendingDown, 
   RefreshCw,
-  Globe,
-  Maximize2,
-  Calendar,
-  Layers,
   ExternalLink,
-  ShieldCheck,
-  CheckCircle2,
-  Clock
+  SlidersHorizontal,
+  CheckCircle2
 } from 'lucide-react';
 import { CompanyForensicProfile, StockChartPoint } from '../types';
 import { fetchLiveStockChart, ChartTimeframe, LiveChartResult } from '../services/yahooFinanceService';
@@ -26,12 +18,11 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
   const [chartType, setChartType] = useState<'area' | 'candlestick'>('area');
   const [showSMA, setShowSMA] = useState(false);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  // Default to 1D to match Yahoo Finance official primary stock quote page!
   const [timeframe, setTimeframe] = useState<ChartTimeframe>('1D');
   const [chartResult, setChartResult] = useState<LiveChartResult | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
   // Fetch real market historical prices whenever ticker, timeframe or manual refresh triggers
   useEffect(() => {
@@ -39,7 +30,7 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
     setIsLoading(true);
     setHoveredIndex(null);
 
-    fetchLiveStockChart(company.ticker, timeframe, company.chartData)
+    fetchLiveStockChart(company.ticker, timeframe, company.chartData, company.stockPrice)
       .then((res) => {
         if (active) {
           setChartResult(res);
@@ -55,54 +46,53 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
     return () => {
       active = false;
     };
-  }, [company.ticker, timeframe, refreshTrigger]);
+  }, [company.ticker, timeframe, refreshTrigger, company.stockPrice]);
 
   const points = useMemo(() => {
-    if (chartResult && chartResult.points && chartResult.points.length > 0) {
-      return chartResult.points;
-    }
-    return company.chartData || [];
-  }, [chartResult, company.chartData]);
+    return chartResult?.points || [];
+  }, [chartResult]);
 
   const activePoint = hoveredIndex !== null && points[hoveredIndex] ? points[hoveredIndex] : null;
 
   const currentPrice = chartResult?.currentPrice ?? company.stockPrice;
   const prevClose = chartResult?.previousClose ?? currentPrice;
   const periodStartPrice = chartResult?.periodStartPrice ?? (points.length > 0 ? points[0].close : currentPrice);
-  
-  // Return for selected timeframe
-  const timeframeReturn = chartResult?.priceChangePercent ?? 
-    (points.length > 0 ? Math.round(((currentPrice - periodStartPrice) / periodStartPrice) * 10000) / 100 : 0);
-  const timeframePriceChange = chartResult?.priceChange ?? 
-    (points.length > 0 ? Math.round((currentPrice - periodStartPrice) * 100) / 100 : 0);
-  
-  // 1-Day change against previous close
-  const dayPriceChange = chartResult?.dayPriceChange ?? Math.round((currentPrice - prevClose) * 100) / 100;
-  const dayPriceChangePercent = chartResult?.dayPriceChangePercent ?? 
-    Math.round(((currentPrice - prevClose) / (prevClose || 1)) * 10000) / 100;
 
-  // In 1D mode, color reflects today's return vs previous close
-  const isUp = timeframe === '1D' ? dayPriceChange >= 0 : timeframeReturn >= 0;
+  // Reference price: In 1D mode, changes are ALWAYS measured vs Previous Close.
+  // In multi-day modes (5D, 1M, 6M, YTD, 1Y, 5Y, MAX), changes are measured vs Period Start.
+  const is1D = timeframe === '1D';
+  const referencePrice = is1D ? prevClose : periodStartPrice;
+
+  // Active price and delta: Dynamically track hovered point, or fall back to latest quote
+  const displayPrice = activePoint ? activePoint.close : currentPrice;
+  const displayChange = Math.round((displayPrice - referencePrice) * 100) / 100;
+  const displayChangePercent = Math.round(((displayPrice - referencePrice) / (referencePrice || 1)) * 10000) / 100;
+  const isUp = displayChange >= 0;
+
   const primaryColor = isUp ? '#10b981' : '#ef4444';
   const primaryGradientId = isUp ? 'bullishGradient' : 'bearishGradient';
 
-  // SVG dimensions
+  // SVG dimensions & margins
   const width = 960;
-  const height = 310;
-  const padding = { top: 25, right: 75, bottom: 45, left: 15 };
+  const height = 320;
+  const padding = { top: 25, right: 75, bottom: 42, left: 16 };
 
   const plotWidth = width - padding.left - padding.right;
   const plotHeight = height - padding.top - padding.bottom;
 
-  // Min and max for price with comfortable margin
+  // Min and max for price axis with comfortable 6% margin
   const { minPrice, maxPrice, priceRange } = useMemo(() => {
-    if (points.length === 0) return { minPrice: 100, maxPrice: 200, priceRange: 100 };
+    if (points.length === 0) {
+      const base = currentPrice || 150;
+      return { minPrice: base * 0.95, maxPrice: base * 1.05, priceRange: base * 0.1 };
+    }
     const allPrices = points.flatMap((d) => [d.open, d.high, d.low, d.close]);
-    if (prevClose) allPrices.push(prevClose);
+    if (is1D && prevClose) {
+      allPrices.push(prevClose);
+    }
     const min = Math.min(...allPrices);
     const max = Math.max(...allPrices);
     const spread = max - min || 1;
-    // 6% margin top and bottom
     const pMin = Math.max(0, min - spread * 0.06);
     const pMax = max + spread * 0.06;
     return {
@@ -110,7 +100,7 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
       maxPrice: pMax,
       priceRange: pMax - pMin || 1
     };
-  }, [points, prevClose]);
+  }, [points, is1D, prevClose, currentPrice]);
 
   // Max volume for bottom histogram
   const maxVol = useMemo(() => {
@@ -119,19 +109,30 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
   }, [points]);
 
   // Coordinate mappers
-  const getX = (index: number) => padding.left + (index / Math.max(1, points.length - 1)) * plotWidth;
-  const getY = (val: number) => padding.top + plotHeight - ((val - minPrice) / priceRange) * plotHeight;
-  const getVolHeight = (vol: number) => Math.min(42, Math.max(1.5, (vol / maxVol) * 42));
+  const getX = useCallback((index: number) => {
+    if (points.length <= 1) return padding.left;
+    return padding.left + (index / (points.length - 1)) * plotWidth;
+  }, [points.length, plotWidth, padding.left]);
 
-  // Area path generator (starts with proper M command)
+  const getY = useCallback((val: number) => {
+    return padding.top + plotHeight - ((val - minPrice) / priceRange) * plotHeight;
+  }, [minPrice, priceRange, plotHeight, padding.top]);
+
+  const getVolHeight = useCallback((vol: number) => {
+    return Math.min(38, Math.max(2, (vol / maxVol) * 38));
+  }, [maxVol]);
+
+  // Area & Line paths
   const { areaPath, linePath } = useMemo(() => {
     if (points.length === 0) return { areaPath: '', linePath: '' };
-    const lineSegments = points.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(i).toFixed(1)} ${getY(d.close).toFixed(1)}`).join(' ');
+    const lineSegments = points
+      .map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(i).toFixed(1)} ${getY(d.close).toFixed(1)}`)
+      .join(' ');
     const area = `${lineSegments} L ${getX(points.length - 1).toFixed(1)} ${(height - padding.bottom).toFixed(1)} L ${getX(0).toFixed(1)} ${(height - padding.bottom).toFixed(1)} Z`;
     return { areaPath: area, linePath: lineSegments };
-  }, [points, minPrice, priceRange, plotHeight]);
+  }, [points, getX, getY, height, padding.bottom]);
 
-  // SMA paths with true coordinate indexing
+  // SMA paths
   const sma50Path = useMemo(() => {
     if (!showSMA || points.length === 0) return '';
     const valid = points
@@ -139,7 +140,7 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
       .filter((p) => p.val !== undefined && p.val !== null);
     if (valid.length === 0) return '';
     return valid.map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.idx).toFixed(1)} ${getY(p.val!).toFixed(1)}`).join(' ');
-  }, [points, showSMA, minPrice, priceRange]);
+  }, [points, showSMA, getX, getY]);
 
   const sma200Path = useMemo(() => {
     if (!showSMA || points.length === 0) return '';
@@ -148,20 +149,54 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
       .filter((p) => p.val !== undefined && p.val !== null);
     if (valid.length === 0) return '';
     return valid.map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.idx).toFixed(1)} ${getY(p.val!).toFixed(1)}`).join(' ');
-  }, [points, showSMA, minPrice, priceRange]);
+  }, [points, showSMA, getX, getY]);
 
   const prevCloseY = getY(prevClose);
 
-  // Timeframe list matching professional market services
+  // Smooth mouse move handler over the SVG
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (points.length === 0 || !svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const svgX = (mouseX / rect.width) * width;
+    
+    if (svgX < padding.left || svgX > width - padding.right) {
+      setHoveredIndex(null);
+      return;
+    }
+    const relX = svgX - padding.left;
+    const frac = relX / plotWidth;
+    const rawIdx = Math.round(frac * (points.length - 1));
+    const idx = Math.max(0, Math.min(points.length - 1, rawIdx));
+    setHoveredIndex(idx);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<SVGSVGElement>) => {
+    if (points.length === 0 || !svgRef.current || !e.touches[0]) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const touchX = e.touches[0].clientX - rect.left;
+    const svgX = (touchX / rect.width) * width;
+    
+    if (svgX < padding.left || svgX > width - padding.right) {
+      setHoveredIndex(null);
+      return;
+    }
+    const relX = svgX - padding.left;
+    const frac = relX / plotWidth;
+    const rawIdx = Math.round(frac * (points.length - 1));
+    const idx = Math.max(0, Math.min(points.length - 1, rawIdx));
+    setHoveredIndex(idx);
+  };
+
   const timeframes: ChartTimeframe[] = ['1D', '5D', '1M', '6M', 'YTD', '1Y', '5Y', 'MAX'];
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm space-y-4 font-sans">
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm space-y-4 font-sans select-none">
       {/* Top Header & Telemetry Bar */}
       <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-slate-800">
         <div>
-          <div className="flex items-center gap-2.5">
-            <span className="font-mono text-lg font-bold text-white tracking-tight">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="font-mono text-xl font-bold text-white tracking-tight">
               {company.ticker}
             </span>
             <span className="text-xs text-slate-300 font-medium">
@@ -170,14 +205,14 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
             <span className="text-[11px] font-mono text-slate-400">
               • {chartResult?.exchangeName || 'NASDAQ'} ({chartResult?.currency || 'USD'})
             </span>
-            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>{chartResult?.isLiveNetwork ? 'Live Yahoo Finance Feed' : 'SEC EDGAR Calibrated'}</span>
+              <span>{chartResult?.isLiveNetwork ? 'Live Yahoo Finance Feed' : 'Calibrated Market Feed'}</span>
             </span>
             {isLoading && (
-              <span className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
+              <span className="text-[11px] text-red-400 font-mono flex items-center gap-1">
                 <RefreshCw className="h-3 w-3 animate-spin text-red-400" />
-                <span>Pulling live candles...</span>
+                <span>Syncing live candles...</span>
               </span>
             )}
           </div>
@@ -185,21 +220,22 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
           {/* Real-Time Price Strip matching Yahoo Finance Quote Header */}
           <div className="flex flex-wrap items-baseline gap-3 mt-1.5">
             <div className="text-3xl font-bold font-mono text-white tracking-tight">
-              ${(activePoint ? activePoint.close : currentPrice).toFixed(2)}
+              ${displayPrice.toFixed(2)}
             </div>
 
             {/* Change readout */}
             <div className={`flex items-center gap-1 text-sm font-mono font-bold ${isUp ? 'text-emerald-400' : 'text-red-400'}`}>
               {isUp ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-              <span>{timeframe === '1D' ? (dayPriceChange >= 0 ? '+' : '') : (timeframePriceChange >= 0 ? '+' : '')}
-                ${(timeframe === '1D' ? dayPriceChange : timeframePriceChange).toFixed(2)}
+              <span>
+                {displayChange >= 0 ? '+' : ''}${displayChange.toFixed(2)}
               </span>
-              <span>(
-                {(timeframe === '1D' ? dayPriceChangePercent : timeframeReturn) >= 0 ? '+' : ''}
-                {(timeframe === '1D' ? dayPriceChangePercent : timeframeReturn).toFixed(2)}%
-              )</span>
+              <span>
+                ({displayChangePercent >= 0 ? '+' : ''}{displayChangePercent.toFixed(2)}%)
+              </span>
               <span className="text-slate-400 text-xs font-normal ml-1">
-                {timeframe === '1D' ? 'Today (At Close / Real-Time)' : `past ${timeframe}`}
+                {activePoint 
+                  ? `at ${activePoint.date}` 
+                  : (is1D ? 'Today vs Prev Close' : `past ${timeframe}`)}
               </span>
             </div>
 
@@ -220,7 +256,7 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
                 className={`px-2.5 py-1 text-xs rounded font-medium transition-all ${
                   timeframe === tf
                     ? 'bg-red-600 text-white shadow-sm font-semibold'
-                    : 'text-slate-400 hover:text-slate-200'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
                 }`}
               >
                 {tf}
@@ -234,7 +270,7 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
               onClick={() => setChartType('area')}
               className={`px-2.5 py-1 text-xs rounded font-medium transition-all ${
                 chartType === 'area'
-                  ? 'bg-slate-800 text-white shadow-sm'
+                  ? 'bg-slate-800 text-white shadow-sm font-semibold'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -244,7 +280,7 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
               onClick={() => setChartType('candlestick')}
               className={`px-2.5 py-1 text-xs rounded font-medium transition-all ${
                 chartType === 'candlestick'
-                  ? 'bg-slate-800 text-white shadow-sm'
+                  ? 'bg-slate-800 text-white shadow-sm font-semibold'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -255,14 +291,15 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
           {/* SMA Indicator */}
           <button
             onClick={() => setShowSMA(!showSMA)}
-            className={`px-2.5 py-1 text-xs rounded-lg border transition-all font-medium ${
+            className={`px-2.5 py-1 text-xs rounded-lg border transition-all font-medium flex items-center gap-1 ${
               showSMA
                 ? 'border-sky-500/40 text-sky-400 bg-sky-500/10'
                 : 'border-slate-800 text-slate-500 hover:text-slate-400'
             }`}
             title="Toggle Simple Moving Average (SMA 50 / 200)"
           >
-            SMA 50/200
+            <SlidersHorizontal className="h-3 w-3" />
+            <span>SMA 50/200</span>
           </button>
 
           {/* External Yahoo Finance Link */}
@@ -270,7 +307,7 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
             href={`https://finance.yahoo.com/quote/${company.ticker}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-1"
+            className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition-all flex items-center gap-1.5"
             title="Verify live on Yahoo Finance"
           >
             <span className="text-[11px] font-medium hidden sm:inline">Yahoo Finance</span>
@@ -291,259 +328,336 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
 
       {/* SVG Stock Market Graph Canvas */}
       <div 
-        ref={containerRef}
-        className="relative w-full overflow-hidden select-none bg-slate-950/60 rounded-lg p-1 border border-slate-800/80"
+        className="relative w-full overflow-hidden bg-slate-950/80 rounded-lg p-1 border border-slate-800/80"
         onMouseLeave={() => setHoveredIndex(null)}
       >
-        <svg
-          viewBox={`0 0 ${width} ${height}`}
-          className="w-full h-auto max-h-[350px] block"
-        >
-          <defs>
-            {/* Bullish Emerald Gradient */}
-            <linearGradient id="bullishGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#10b981" stopOpacity="0.25" />
-              <stop offset="60%" stopColor="#10b981" stopOpacity="0.06" />
-              <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
-            </linearGradient>
+        {points.length === 0 && isLoading ? (
+          <div className="h-[310px] flex flex-col items-center justify-center space-y-3">
+            <RefreshCw className="h-6 w-6 text-red-400 animate-spin" />
+            <div className="text-xs font-mono text-slate-400">Loading Yahoo Finance candlesticks...</div>
+          </div>
+        ) : (
+          <svg
+            ref={svgRef}
+            viewBox={`0 0 ${width} ${height}`}
+            className="w-full h-auto max-h-[350px] block cursor-crosshair"
+            onMouseMove={handleMouseMove}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={() => setHoveredIndex(null)}
+          >
+            <defs>
+              {/* Bullish Emerald Gradient */}
+              <linearGradient id="bullishGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#10b981" stopOpacity="0.28" />
+                <stop offset="65%" stopColor="#10b981" stopOpacity="0.06" />
+                <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+              </linearGradient>
 
-            {/* Bearish Red Gradient */}
-            <linearGradient id="bearishGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#ef4444" stopOpacity="0.25" />
-              <stop offset="60%" stopColor="#ef4444" stopOpacity="0.06" />
-              <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
-            </linearGradient>
+              {/* Bearish Red Gradient */}
+              <linearGradient id="bearishGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#ef4444" stopOpacity="0.28" />
+                <stop offset="65%" stopColor="#ef4444" stopOpacity="0.06" />
+                <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
+              </linearGradient>
+            </defs>
 
-            {/* Volume bar gradient */}
-            <linearGradient id="volGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#475569" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#475569" stopOpacity="0.08" />
-            </linearGradient>
-          </defs>
-
-          {/* Horizontal Gridlines & Price Scale */}
-          {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => {
-            const y = padding.top + plotHeight * pct;
-            const priceVal = maxPrice - pct * priceRange;
-            return (
-              <g key={`grid-${i}`}>
-                <line
-                  x1={padding.left}
-                  y1={y}
-                  x2={width - padding.right}
-                  y2={y}
-                  stroke="#1e293b"
-                  strokeDasharray="4 4"
-                  strokeWidth="1"
-                />
-                <text
-                  x={width - padding.right + 8}
-                  y={y + 3}
-                  fill="#64748b"
-                  fontSize="10"
-                  fontFamily="JetBrains Mono, monospace"
-                  textAnchor="start"
-                >
-                  ${priceVal.toFixed(2)}
-                </text>
-              </g>
-            );
-          })}
-
-          {/* Previous Close Reference Line (Dashed, exactly like Yahoo Finance) */}
-          {prevCloseY >= padding.top && prevCloseY <= height - padding.bottom && (
-            <g>
-              <line
-                x1={padding.left}
-                y1={prevCloseY}
-                x2={width - padding.right}
-                y2={prevCloseY}
-                stroke="#94a3b8"
-                strokeDasharray="3 3"
-                strokeWidth="1"
-                opacity="0.6"
-              />
-              <text
-                x={width - padding.right + 8}
-                y={prevCloseY + 3}
-                fill="#cbd5e1"
-                fontSize="9"
-                fontFamily="JetBrains Mono, monospace"
-                textAnchor="start"
-              >
-                Prev: ${prevClose.toFixed(2)}
-              </text>
-            </g>
-          )}
-
-          {/* Volume bars (rendered cleanly at bottom 15%) */}
-          {points.map((d, i) => {
-            const x = getX(i);
-            const barH = getVolHeight(d.volume);
-            const y = height - padding.bottom - barH;
-            const barW = Math.max(1.5, (plotWidth / Math.max(1, points.length)) * 0.6);
-            return (
-              <rect
-                key={`vol-${i}`}
-                x={x - barW / 2}
-                y={y}
-                width={barW}
-                height={barH}
-                fill="url(#volGradient)"
-                rx="0.5"
-              />
-            );
-          })}
-
-          {/* Line & Gradient Area View */}
-          {chartType === 'area' && areaPath && (
-            <>
-              <path d={areaPath} fill={`url(#${primaryGradientId})`} />
-              <path
-                d={linePath}
-                fill="none"
-                stroke={primaryColor}
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </>
-          )}
-
-          {/* Candlestick Mode */}
-          {chartType === 'candlestick' &&
-            points.map((d, i) => {
-              const x = getX(i);
-              const candleUp = d.close >= d.open;
-              const candleColor = candleUp ? '#10b981' : '#ef4444';
-              const highY = getY(d.high);
-              const lowY = getY(d.low);
-              const openY = getY(d.open);
-              const closeY = getY(d.close);
-              const bodyTop = Math.min(openY, closeY);
-              const bodyH = Math.max(1.5, Math.abs(closeY - openY));
-              const candleW = Math.max(2, (plotWidth / Math.max(1, points.length)) * 0.7);
-
+            {/* Horizontal Gridlines & Price Scale */}
+            {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => {
+              const y = padding.top + plotHeight * pct;
+              const priceVal = maxPrice - pct * priceRange;
               return (
-                <g key={`candle-${i}`}>
-                  {/* High-Low Wick */}
+                <g key={`grid-${i}`}>
                   <line
-                    x1={x}
-                    y1={highY}
-                    x2={x}
-                    y2={lowY}
-                    stroke={candleColor}
-                    strokeWidth="1.2"
+                    x1={padding.left}
+                    y1={y}
+                    x2={width - padding.right}
+                    y2={y}
+                    stroke="#1e293b"
+                    strokeDasharray="4 4"
+                    strokeWidth="1"
                   />
-                  {/* Open-Close Body */}
-                  <rect
-                    x={x - candleW / 2}
-                    y={bodyTop}
-                    width={candleW}
-                    height={bodyH}
-                    fill={candleColor}
-                    rx="0.5"
-                  />
+                  <text
+                    x={width - padding.right + 8}
+                    y={y + 3}
+                    fill="#64748b"
+                    fontSize="10"
+                    fontFamily="JetBrains Mono, monospace"
+                    textAnchor="start"
+                  >
+                    ${priceVal.toFixed(2)}
+                  </text>
                 </g>
               );
             })}
 
-          {/* Technical Indicators: SMA 50 (Sky) and SMA 200 (Amber) */}
-          {showSMA && (
-            <>
-              {sma50Path && (
-                <path
-                  d={sma50Path}
-                  fill="none"
-                  stroke="#38bdf8"
-                  strokeWidth="1.5"
-                  strokeDasharray="4 2"
-                  opacity="0.9"
+            {/* Previous Close Reference Line (Dashed horizontal, official Yahoo Finance style) */}
+            {is1D && prevCloseY >= padding.top && prevCloseY <= height - padding.bottom && (
+              <g>
+                <line
+                  x1={padding.left}
+                  y1={prevCloseY}
+                  x2={width - padding.right}
+                  y2={prevCloseY}
+                  stroke="#94a3b8"
+                  strokeDasharray="3 3"
+                  strokeWidth="1"
+                  opacity="0.65"
                 />
-              )}
-              {sma200Path && (
-                <path
-                  d={sma200Path}
-                  fill="none"
-                  stroke="#f59e0b"
-                  strokeWidth="1.5"
-                  opacity="0.85"
+                <rect
+                  x={width - padding.right + 4}
+                  y={prevCloseY - 8}
+                  width="68"
+                  height="16"
+                  fill="#1e293b"
+                  rx="3"
+                  stroke="#475569"
+                  strokeWidth="0.8"
                 />
-              )}
-            </>
-          )}
-
-          {/* Date Axis Markers */}
-          {points.map((d, i) => {
-            const step = Math.max(1, Math.floor(points.length / 6));
-            if (i % step === 0 || i === points.length - 1) {
-              const x = getX(i);
-              return (
                 <text
-                  key={`date-${i}`}
-                  x={x}
-                  y={height - padding.bottom + 18}
-                  fill="#64748b"
-                  fontSize="10"
-                  fontFamily="Inter, sans-serif"
-                  textAnchor="middle"
+                  x={width - padding.right + 7}
+                  y={prevCloseY + 4}
+                  fill="#cbd5e1"
+                  fontSize="9"
+                  fontFamily="JetBrains Mono, monospace"
+                  fontWeight="600"
+                  textAnchor="start"
                 >
-                  {d.date}
+                  Prev ${prevClose.toFixed(2)}
                 </text>
+              </g>
+            )}
+
+            {/* Volume bars (rendered cleanly at bottom 15% with green/red candle colors) */}
+            {points.map((d, i) => {
+              const x = getX(i);
+              const barH = getVolHeight(d.volume);
+              const y = height - padding.bottom - barH;
+              const barW = Math.max(1.5, (plotWidth / Math.max(1, points.length)) * 0.65);
+              const isCandleUp = d.close >= d.open;
+              const barColor = isCandleUp ? '#10b981' : '#ef4444';
+              return (
+                <rect
+                  key={`vol-${i}`}
+                  x={x - barW / 2}
+                  y={y}
+                  width={barW}
+                  height={barH}
+                  fill={barColor}
+                  opacity={i === hoveredIndex ? 0.85 : 0.35}
+                  rx="0.5"
+                />
               );
-            }
-            return null;
-          })}
+            })}
 
-          {/* Invisible interactive vertical hit-zones for razor-sharp mouse tracking */}
-          {points.map((_, i) => {
-            const x = getX(i);
-            const colW = plotWidth / Math.max(1, points.length);
-            return (
-              <rect
-                key={`hit-${i}`}
-                x={x - colW / 2}
-                y={padding.top}
-                width={colW}
-                height={plotHeight}
-                fill="transparent"
-                onMouseEnter={() => setHoveredIndex(i)}
-                className="cursor-crosshair"
-              />
-            );
-          })}
+            {/* Line & Gradient Area View */}
+            {chartType === 'area' && areaPath && (
+              <>
+                <path d={areaPath} fill={`url(#${primaryGradientId})`} />
+                <path
+                  d={linePath}
+                  fill="none"
+                  stroke={primaryColor}
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </>
+            )}
 
-          {/* Crosshair Guide & Tracking Indicator */}
-          {hoveredIndex !== null && points[hoveredIndex] && (
-            <g>
-              <line
-                x1={getX(hoveredIndex)}
-                y1={padding.top}
-                x2={getX(hoveredIndex)}
-                y2={height - padding.bottom}
-                stroke="#94a3b8"
-                strokeDasharray="2 2"
-                strokeWidth="1"
-                opacity="0.75"
-              />
-              <circle
-                cx={getX(hoveredIndex)}
-                cy={getY(points[hoveredIndex].close)}
-                r="4.5"
-                fill={primaryColor}
-                stroke="#ffffff"
-                strokeWidth="2"
-              />
-            </g>
-          )}
-        </svg>
+            {/* Candlestick Mode */}
+            {chartType === 'candlestick' &&
+              points.map((d, i) => {
+                const x = getX(i);
+                const candleUp = d.close >= d.open;
+                const candleColor = candleUp ? '#10b981' : '#ef4444';
+                const highY = getY(d.high);
+                const lowY = getY(d.low);
+                const openY = getY(d.open);
+                const closeY = getY(d.close);
+                const bodyTop = Math.min(openY, closeY);
+                const bodyH = Math.max(1.5, Math.abs(closeY - openY));
+                const candleW = Math.max(2, (plotWidth / Math.max(1, points.length)) * 0.7);
 
-        {/* Hover Tooltip Overlay Card */}
+                return (
+                  <g key={`candle-${i}`}>
+                    {/* High-Low Wick */}
+                    <line
+                      x1={x}
+                      y1={highY}
+                      x2={x}
+                      y2={lowY}
+                      stroke={candleColor}
+                      strokeWidth="1.2"
+                    />
+                    {/* Open-Close Body */}
+                    <rect
+                      x={x - candleW / 2}
+                      y={bodyTop}
+                      width={candleW}
+                      height={bodyH}
+                      fill={candleColor}
+                      rx="0.5"
+                    />
+                  </g>
+                );
+              })}
+
+            {/* Technical Indicators: SMA 50 (Sky) and SMA 200 (Amber) */}
+            {showSMA && (
+              <>
+                {sma50Path && (
+                  <path
+                    d={sma50Path}
+                    fill="none"
+                    stroke="#38bdf8"
+                    strokeWidth="1.5"
+                    strokeDasharray="4 2"
+                    opacity="0.9"
+                  />
+                )}
+                {sma200Path && (
+                  <path
+                    d={sma200Path}
+                    fill="none"
+                    stroke="#f59e0b"
+                    strokeWidth="1.5"
+                    opacity="0.85"
+                  />
+                )}
+              </>
+            )}
+
+            {/* Date Axis Markers */}
+            {points.map((d, i) => {
+              const step = Math.max(1, Math.floor(points.length / 6));
+              const isFirst = i === 0;
+              const isLast = i === points.length - 1;
+              if (i % step === 0 || isLast) {
+                const x = getX(i);
+                const textAnchor = isFirst ? 'start' : isLast ? 'end' : 'middle';
+                return (
+                  <text
+                    key={`date-${i}`}
+                    x={x}
+                    y={height - padding.bottom + 18}
+                    fill="#64748b"
+                    fontSize="10"
+                    fontFamily="Inter, sans-serif"
+                    textAnchor={textAnchor}
+                  >
+                    {d.date}
+                  </text>
+                );
+              }
+              return null;
+            })}
+
+            {/* Crosshair Guide & Tracking Indicator */}
+            {hoveredIndex !== null && points[hoveredIndex] && (
+              <g>
+                {/* Vertical Crosshair Line */}
+                <line
+                  x1={getX(hoveredIndex)}
+                  y1={padding.top}
+                  x2={getX(hoveredIndex)}
+                  y2={height - padding.bottom}
+                  stroke="#94a3b8"
+                  strokeDasharray="2 2"
+                  strokeWidth="1.2"
+                  opacity="0.8"
+                />
+
+                {/* Horizontal Crosshair Line */}
+                <line
+                  x1={padding.left}
+                  y1={getY(points[hoveredIndex].close)}
+                  x2={width - padding.right}
+                  y2={getY(points[hoveredIndex].close)}
+                  stroke="#94a3b8"
+                  strokeDasharray="2 2"
+                  strokeWidth="1"
+                  opacity="0.5"
+                />
+
+                {/* Right Y-Axis Price Highlight Badge */}
+                <g>
+                  <rect
+                    x={width - padding.right + 2}
+                    y={getY(points[hoveredIndex].close) - 9}
+                    width="70"
+                    height="18"
+                    fill={primaryColor}
+                    rx="3"
+                  />
+                  <text
+                    x={width - padding.right + 6}
+                    y={getY(points[hoveredIndex].close) + 4}
+                    fill="#ffffff"
+                    fontSize="9.5"
+                    fontFamily="JetBrains Mono, monospace"
+                    fontWeight="700"
+                    textAnchor="start"
+                  >
+                    ${points[hoveredIndex].close.toFixed(2)}
+                  </text>
+                </g>
+
+                {/* Bottom X-Axis Date Highlight Badge */}
+                <g>
+                  <rect
+                    x={Math.max(padding.left, Math.min(width - padding.right - 64, getX(hoveredIndex) - 32))}
+                    y={height - padding.bottom + 5}
+                    width="64"
+                    height="18"
+                    fill="#1e293b"
+                    stroke="#475569"
+                    strokeWidth="1"
+                    rx="3"
+                  />
+                  <text
+                    x={Math.max(padding.left + 32, Math.min(width - padding.right - 32, getX(hoveredIndex)))}
+                    y={height - padding.bottom + 17}
+                    fill="#e2e8f0"
+                    fontSize="9"
+                    fontFamily="JetBrains Mono, monospace"
+                    fontWeight="600"
+                    textAnchor="middle"
+                  >
+                    {points[hoveredIndex].date.split(' ')[0]}
+                  </text>
+                </g>
+
+                {/* Outer Pulsing Aura & Focal Circle */}
+                <circle
+                  cx={getX(hoveredIndex)}
+                  cy={getY(points[hoveredIndex].close)}
+                  r="7"
+                  fill={primaryColor}
+                  opacity="0.3"
+                />
+                <circle
+                  cx={getX(hoveredIndex)}
+                  cy={getY(points[hoveredIndex].close)}
+                  r="4.5"
+                  fill={primaryColor}
+                  stroke="#ffffff"
+                  strokeWidth="2"
+                />
+              </g>
+            )}
+          </svg>
+        )}
+
+        {/* Hover Tooltip Overlay Card with Intelligent Boundary Positioning */}
         {activePoint && hoveredIndex !== null && (
-          <div className="absolute top-3 left-4 bg-slate-950/95 border border-slate-700/80 p-3 rounded-lg shadow-2xl text-xs space-y-1.5 font-mono pointer-events-none z-10 min-w-[220px]">
+          <div 
+            className={`absolute top-3 ${
+              hoveredIndex / points.length > 0.55 ? 'left-4' : 'right-24'
+            } bg-slate-950/95 border border-slate-700/80 p-3 rounded-lg shadow-2xl text-xs space-y-1.5 font-mono pointer-events-none z-10 min-w-[210px] backdrop-blur-sm`}
+          >
             <div className="flex items-center justify-between pb-1.5 border-b border-slate-800 text-[11px]">
-              <span className="text-slate-300 font-sans font-semibold">{activePoint.date} (EDT)</span>
-              <span className="text-slate-400 font-mono">#{hoveredIndex + 1}</span>
+              <span className="text-slate-200 font-sans font-semibold">{activePoint.date} (EDT)</span>
+              <span className="text-slate-400 font-mono text-[10px]">Candle #{hoveredIndex + 1}</span>
             </div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
               <div>
@@ -561,12 +675,9 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
             </div>
             <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-[10px] text-slate-400">
               <span>Vol: {(activePoint.volume / 1e6).toFixed(2)}M</span>
-              {prevClose && (
-                <span className={(activePoint.close - prevClose) >= 0 ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
-                  {(activePoint.close - prevClose) >= 0 ? '+' : ''}${(activePoint.close - prevClose).toFixed(2)} (
-                  {((activePoint.close - prevClose) / prevClose * 100).toFixed(2)}%)
-                </span>
-              )}
+              <span className={displayChange >= 0 ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
+                {displayChange >= 0 ? '+' : ''}${displayChange.toFixed(2)} ({displayChangePercent >= 0 ? '+' : ''}{displayChangePercent.toFixed(2)}%)
+              </span>
             </div>
           </div>
         )}
@@ -574,15 +685,18 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
 
       {/* Official Yahoo Finance Key Statistics Matrix Grid */}
       <div className="bg-slate-950/80 border border-slate-800/80 rounded-lg p-3 text-xs">
-        <div className="text-[11px] font-mono text-slate-400 uppercase font-semibold pb-2 border-b border-slate-800/80 flex items-center justify-between">
-          <span>YAHOO FINANCE MARKET TELEMETRY SUMMARY</span>
-          <span className="text-emerald-400 flex items-center gap-1 font-normal">
+        <div className="text-[11px] font-mono text-slate-400 uppercase font-semibold pb-2 border-b border-slate-800/80 flex items-center justify-between flex-wrap gap-2">
+          <span className="flex items-center gap-1.5">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+            <span>YAHOO FINANCE MARKET TELEMETRY SUMMARY</span>
+          </span>
+          <span className="text-emerald-400 flex items-center gap-1 font-normal text-[10px]">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            NYSE/NASDAQ OFFICIAL FEED
+            NYSE/NASDAQ OFFICIAL FEED • USD
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 pt-2 font-mono text-[11px]">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2.5 font-mono text-[11px]">
           <div>
             <span className="text-slate-500 block text-[10px]">Previous Close</span>
             <span className="text-white font-bold">${prevClose.toFixed(2)}</span>
@@ -596,21 +710,21 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
           <div>
             <span className="text-slate-500 block text-[10px]">Day&apos;s Range</span>
             <span className="text-white font-bold">
-              ${(chartResult?.dayLow || chartResult?.lowPrice || prevClose * 0.98).toFixed(2)} - ${(chartResult?.dayHigh || chartResult?.highPrice || currentPrice).toFixed(2)}
+              ${(chartResult?.dayLow || Math.min(...points.map(p => p.low), prevClose * 0.99)).toFixed(2)} - ${(chartResult?.dayHigh || Math.max(...points.map(p => p.high), currentPrice)).toFixed(2)}
             </span>
           </div>
 
           <div>
             <span className="text-slate-500 block text-[10px]">52-Week Range</span>
             <span className="text-white font-bold">
-              ${(chartResult?.fiftyTwoWeekLow || 243.42).toFixed(2)} - ${(chartResult?.fiftyTwoWeekHigh || 345.34).toFixed(2)}
+              ${(chartResult?.fiftyTwoWeekLow || currentPrice * 0.75).toFixed(2)} - ${(chartResult?.fiftyTwoWeekHigh || currentPrice * 1.15).toFixed(2)}
             </span>
           </div>
 
           <div>
             <span className="text-slate-500 block text-[10px]">Volume</span>
             <span className="text-white font-bold">
-              {((chartResult?.volume || 31878433) / 1e6).toFixed(2)}M
+              {((chartResult?.volume || points.reduce((a, b) => a + b.volume, 0)) / 1e6).toFixed(2)}M
             </span>
           </div>
 
