@@ -8,7 +8,13 @@ import { UserSession } from './types';
 type PageView = 'landing' | 'login' | 'signup' | 'dashboard';
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<PageView>('landing');
+  const [currentPage, setCurrentPage] = useState<PageView>(() => {
+    const hash = window.location.hash.replace('#', '').toLowerCase();
+    if (hash === 'landing') return 'landing';
+    if (hash === 'login') return 'login';
+    if (hash === 'signup') return 'signup';
+    return 'dashboard';
+  });
   const [currentTicker, setCurrentTicker] = useState<string>('AAPL');
   const [userSession, setUserSession] = useState<UserSession | null>(() => {
     try {
@@ -32,10 +38,10 @@ export default function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '').toLowerCase();
-      if (hash === 'dashboard') setCurrentPage('dashboard');
+      if (hash === 'landing') setCurrentPage('landing');
       else if (hash === 'login') setCurrentPage('login');
       else if (hash === 'signup') setCurrentPage('signup');
-      else if (hash === 'landing' || hash === '') setCurrentPage('landing');
+      else setCurrentPage('dashboard');
     };
 
     // Check initial hash

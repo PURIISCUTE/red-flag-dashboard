@@ -11,9 +11,9 @@ export const PRELOADED_COMPANIES: Record<string, CompanyForensicProfile> = {
     cik: '0000320193',
     sector: 'Consumer Electronics & Hardware Ecosystem',
     lens: 'Tech Hardware',
-    marketCap: 3450.8, // Billions
-    stockPrice: 228.45,
-    priceChangePercent: +1.18,
+    marketCap: 5080.5, // Billions
+    stockPrice: 333.69,
+    priceChangePercent: +1.02,
     beta: 1.08,
     forensicScore: 84, // Deterministic score: Clean institutional tier
     scoreGrade: 'A',
@@ -230,9 +230,9 @@ export const PRELOADED_COMPANIES: Record<string, CompanyForensicProfile> = {
     cik: '0001045810',
     sector: 'Semiconductors & Accelerated AI Compute',
     lens: 'AI/Deep Tech',
-    marketCap: 2950.4,
-    stockPrice: 122.80,
-    priceChangePercent: +3.45,
+    marketCap: 5750.2,
+    stockPrice: 233.95,
+    priceChangePercent: +1.34,
     beta: 1.68,
     forensicScore: 71, // B tier with forensic monitoring on compute customer concentration
     scoreGrade: 'B',
@@ -448,9 +448,9 @@ export const PRELOADED_COMPANIES: Record<string, CompanyForensicProfile> = {
     cik: '0000789019',
     sector: 'Cloud & Enterprise SaaS Infrastructure',
     lens: 'SaaS',
-    marketCap: 3180.2,
-    stockPrice: 428.15,
-    priceChangePercent: -0.42,
+    marketCap: 3840.1,
+    stockPrice: 517.53,
+    priceChangePercent: +0.92,
     beta: 0.92,
     forensicScore: 89,
     scoreGrade: 'A',

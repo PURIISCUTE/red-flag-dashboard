@@ -20,7 +20,7 @@ export interface LiveYahooQuote {
   isLiveNetwork: boolean;
 }
 
-export type ChartTimeframe = '1D' | '5D' | '1M' | '6M' | '1Y' | '5Y';
+export type ChartTimeframe = '1D' | '5D' | '1M' | '6M' | 'YTD' | '1Y' | '5Y' | 'MAX';
 
 export interface LiveChartResult {
   ticker: string;
@@ -29,6 +29,14 @@ export interface LiveChartResult {
   currentPrice: number;
   periodStartPrice: number;
   previousClose: number;
+  openPrice: number;
+  dayHigh: number;
+  dayLow: number;
+  fiftyTwoWeekHigh?: number;
+  fiftyTwoWeekLow?: number;
+  volume: number;
+  avgVolume?: number;
+  marketCap?: number;
   priceChange: number;
   priceChangePercent: number;
   dayPriceChange: number;
@@ -37,6 +45,7 @@ export interface LiveChartResult {
   lowPrice: number;
   currency: string;
   exchangeName: string;
+  timezone: string;
   source: 'Live Yahoo Finance API' | 'SEC EDGAR XBRL Calibrated Model';
   isLiveNetwork: boolean;
 }
@@ -159,6 +168,8 @@ function parseYahooChartResponse(
 
     const points: StockChartPoint[] = [];
 
+    const tz = meta.exchangeTimezoneName || 'America/New_York';
+
     for (let i = 0; i < timestamps.length; i++) {
       const c = closes[i];
       if (c === null || c === undefined || isNaN(c)) continue;
@@ -171,27 +182,32 @@ function parseYahooChartResponse(
       let dateStr = '';
       if (timeframe === '1D') {
         dateStr = dateObj.toLocaleTimeString('en-US', {
+          timeZone: tz,
           hour: 'numeric',
           minute: '2-digit'
         });
       } else if (timeframe === '5D') {
         dateStr = `${dateObj.toLocaleDateString('en-US', {
+          timeZone: tz,
           month: 'numeric',
           day: 'numeric'
         })} ${dateObj.toLocaleTimeString('en-US', {
+          timeZone: tz,
           hour: 'numeric',
           minute: '2-digit'
         })}`;
-      } else if (timeframe === '1M' || timeframe === '6M' || timeframe === '1Y') {
+      } else if (timeframe === '1M' || timeframe === '6M' || timeframe === 'YTD' || timeframe === '1Y') {
         dateStr = dateObj.toLocaleDateString('en-US', {
+          timeZone: tz,
           month: 'short',
           day: 'numeric',
           year: '2-digit'
         });
       } else {
         dateStr = dateObj.toLocaleDateString('en-US', {
+          timeZone: tz,
           month: 'short',
-          year: '2-digit'
+          year: 'numeric'
         });
       }
 
@@ -250,6 +266,13 @@ function parseYahooChartResponse(
       currentPrice: latestPrice,
       periodStartPrice,
       previousClose: prevClose,
+      openPrice: points[0].open,
+      dayHigh: meta.regularMarketDayHigh || highPrice,
+      dayLow: meta.regularMarketDayLow || lowPrice,
+      fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh,
+      fiftyTwoWeekLow: meta.fiftyTwoWeekLow,
+      volume: meta.regularMarketVolume || points.reduce((acc, p) => acc + p.volume, 0),
+      marketCap: meta.marketCap ? Math.round((meta.marketCap / 1e9) * 10) / 10 : undefined,
       priceChange,
       priceChangePercent,
       dayPriceChange,
@@ -257,7 +280,8 @@ function parseYahooChartResponse(
       highPrice,
       lowPrice,
       currency: meta.currency || 'USD',
-      exchangeName: meta.exchangeName || 'NYSE / NASDAQ',
+      exchangeName: meta.fullExchangeName || meta.exchangeName || 'NYSE / NASDAQ',
+      timezone: tz,
       source: 'Live Yahoo Finance API',
       isLiveNetwork: true
     };
@@ -268,17 +292,17 @@ function parseYahooChartResponse(
 
 /**
  * Fetches real historical stock market OHLCV price feeds from Yahoo Finance
- * across multiple timeframe periods (1D, 5D, 1M, 6M, 1Y, 5Y).
+ * across multiple timeframe periods (1D, 5D, 1M, 6M, YTD, 1Y, 5Y, MAX).
  */
 export async function fetchLiveStockChart(
   ticker: string,
-  timeframe: ChartTimeframe = '1Y',
+  timeframe: ChartTimeframe = '1D',
   fallbackData?: StockChartPoint[]
 ): Promise<LiveChartResult> {
   const cleanTicker = ticker.toUpperCase().trim();
   
-  let range = '1y';
-  let interval = '1d';
+  let range = '1d';
+  let interval = '5m';
   if (timeframe === '1D') {
     range = '1d';
     interval = '5m';
@@ -291,12 +315,18 @@ export async function fetchLiveStockChart(
   } else if (timeframe === '6M') {
     range = '6mo';
     interval = '1d';
+  } else if (timeframe === 'YTD') {
+    range = 'ytd';
+    interval = '1d';
   } else if (timeframe === '1Y') {
     range = '1y';
     interval = '1d';
   } else if (timeframe === '5Y') {
     range = '5y';
     interval = '1wk';
+  } else if (timeframe === 'MAX') {
+    range = 'max';
+    interval = '1mo';
   }
 
   // 1. Try local server proxy endpoint
@@ -357,6 +387,10 @@ export async function fetchLiveStockChart(
     currentPrice: latestClose,
     periodStartPrice: firstClose,
     previousClose: firstClose,
+    openPrice: firstClose,
+    dayHigh: Math.max(...(basePoints.map(p => p.high) || [latestClose])),
+    dayLow: Math.min(...(basePoints.map(p => p.low) || [firstClose])),
+    volume: basePoints.reduce((acc, p) => acc + p.volume, 0) || 31800000,
     priceChange: Math.round(diff * 100) / 100,
     priceChangePercent: diffPct,
     dayPriceChange: Math.round(diff * 100) / 100,
@@ -365,6 +399,7 @@ export async function fetchLiveStockChart(
     lowPrice: Math.min(...(basePoints.map(p => p.low) || [firstClose])),
     currency: 'USD',
     exchangeName: 'NYSE / NASDAQ',
+    timezone: 'America/New_York',
     source: 'SEC EDGAR XBRL Calibrated Model',
     isLiveNetwork: false
   };

@@ -51,7 +51,14 @@ export const Header: React.FC<HeaderProps> = ({
   const [searchError, setSearchError] = useState<string | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const popularTickers = ['AAPL', 'NVDA', 'MSFT', 'PLTR', 'TSLA', 'AMD', 'COIN'];
+  const popularTickers: { ticker: string; price: number; change: string }[] = [
+    { ticker: 'AAPL', price: 333.69, change: '+1.02%' },
+    { ticker: 'NVDA', price: 233.95, change: '+1.34%' },
+    { ticker: 'TSLA', price: 370.59, change: '+4.65%' },
+    { ticker: 'MSFT', price: 517.53, change: '+0.92%' },
+    { ticker: 'WMT', price: 104.26, change: '+0.00%' },
+    { ticker: 'AMZN', price: 251.52, change: '+1.33%' }
+  ];
 
   // Fast live autocomplete search across 7,600+ NYSE & NASDAQ tickers
   const suggestions: NyseNasdaqCompany[] = useMemo(() => {
@@ -125,18 +132,21 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Ticker Search & Quick Switcher */}
         <div className="flex items-center gap-2 flex-1 max-w-lg">
-          <div className="hidden lg:flex items-center gap-1 bg-slate-900/90 p-1 border border-slate-800 rounded-lg">
-            {popularTickers.slice(0, 6).map((t) => (
+          <div className="hidden xl:flex items-center gap-1 bg-slate-900/90 p-1 border border-slate-800 rounded-lg">
+            {popularTickers.map((t) => (
               <button
-                key={t}
-                onClick={() => onSelectCompany(t)}
-                className={`px-2.5 py-1 text-xs font-mono font-medium rounded-md transition-all ${
-                  currentCompany.ticker === t
-                    ? 'bg-red-500 text-white shadow-sm'
+                key={t.ticker}
+                onClick={() => onSelectCompany(t.ticker)}
+                className={`px-2.5 py-1 text-xs font-mono font-medium rounded-md transition-all flex items-center gap-1.5 ${
+                  currentCompany.ticker === t.ticker
+                    ? 'bg-red-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                 }`}
               >
-                {t}
+                <span>{t.ticker}</span>
+                <span className={`text-[10px] ${currentCompany.ticker === t.ticker ? 'text-white' : 'text-emerald-400'}`}>
+                  ${t.price.toFixed(0)}
+                </span>
               </button>
             ))}
           </div>
@@ -222,6 +232,16 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             )}
           </div>
+        </div>
+
+        {/* Active Stock Quote Pill */}
+        <div className="hidden lg:flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg font-mono text-xs">
+          <span className="font-bold text-white">{currentCompany.ticker}</span>
+          <span className="text-white font-semibold">${currentCompany.stockPrice.toFixed(2)}</span>
+          <span className={currentCompany.priceChangePercent >= 0 ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold'}>
+            {currentCompany.priceChangePercent >= 0 ? '+' : ''}{currentCompany.priceChangePercent}%
+          </span>
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse ml-0.5"></span>
         </div>
 
         {/* Action Controls */}
