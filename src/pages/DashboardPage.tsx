@@ -12,7 +12,9 @@ import { Footer } from '../components/Footer';
 import { getDeterministicCompanyProfile, isValidStockTicker, applyIndustryLensToProfile } from '../data/companyData';
 import { resolveQueryToTicker } from '../data/nyseNasdaqRegistry';
 import { generateAuditPdf } from '../services/pdfGenerator';
-import { askAiToClassifyIndustry, VALID_7_LENSES } from '../services/industryClassifier';
+import { automaticallyAllocateIndustryLens, VALID_7_LENSES } from '../services/industryClassifier';
+import { recalculateCompanyProfileForensics } from '../services/forensicCalculations';
+import { CalculationTransparencyModal } from '../components/CalculationTransparencyModal';
 import { fetchLiveYahooQuote, LiveYahooQuote } from '../services/yahooFinanceService';
 import { 
   UserSession, 
@@ -74,10 +76,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [activeModule, setActiveModule] = useState<ActiveViewModule>('overview');
   const [isModuleDropdownOpen, setIsModuleDropdownOpen] = useState<boolean>(false);
 
-  // Active Industry Lens state (allows user and AI to select across the 7 industries)
+  // Active Industry Lens state (automatically allocated based on company sector)
   const [selectedLens, setSelectedLens] = useState<IndustryLens | null>(null);
-  const [isClassifyingAi, setIsClassifyingAi] = useState<boolean>(false);
-  const [aiClassificationNote, setAiLensNote] = useState<string | null>(null);
+  const [isProofModalOpen, setIsProofModalOpen] = useState<boolean>(false);
 
   // Base deterministic company profile
   const baseCompanyProfile = useMemo(() => {
@@ -86,37 +87,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     return getDeterministicCompanyProfile('AAPL')!;
   }, [currentTicker]);
 
-  // Execute AI industry classification instruction when ticker loads
+  // Automatically allocate industry lens based on sector context (No GPT)
   React.useEffect(() => {
-    let active = true;
-    setIsClassifyingAi(true);
-    setAiLensNote(null);
-
-    askAiToClassifyIndustry(baseCompanyProfile.ticker, baseCompanyProfile.name, baseCompanyProfile.sector)
-      .then((res) => {
-        if (active) {
-          setSelectedLens(res.lens);
-          setIsClassifyingAi(false);
-          setAiLensNote(res.note || `AI Agent assigned ${res.lens} lens`);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setSelectedLens(baseCompanyProfile.lens);
-          setIsClassifyingAi(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [baseCompanyProfile.ticker, baseCompanyProfile.name, baseCompanyProfile.sector, baseCompanyProfile.lens]);
+    const auto = automaticallyAllocateIndustryLens(
+      baseCompanyProfile.ticker,
+      baseCompanyProfile.name,
+      baseCompanyProfile.sector
+    );
+    setSelectedLens(auto);
+  }, [baseCompanyProfile.ticker, baseCompanyProfile.name, baseCompanyProfile.sector]);
 
   // Dynamically evaluated profile according to active industry lens and live Yahoo market telemetry
   const companyProfile = useMemo(() => {
     let profile = baseCompanyProfile;
-    if (selectedLens && selectedLens !== baseCompanyProfile.lens) {
-      profile = applyIndustryLensToProfile(baseCompanyProfile, selectedLens);
+    const activeLens = selectedLens || baseCompanyProfile.lens;
+    if (activeLens !== baseCompanyProfile.lens) {
+      profile = applyIndustryLensToProfile(baseCompanyProfile, activeLens);
     }
     if (liveQuote && liveQuote.isLiveNetwork) {
       profile = {
@@ -125,25 +111,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         priceChangePercent: liveQuote.regularMarketChangePercent,
         marketCap: liveQuote.marketCap ?? profile.marketCap
       };
+      profile = recalculateCompanyProfileForensics(profile, liveQuote.marketCap);
     }
     return profile;
   }, [baseCompanyProfile, selectedLens, liveQuote]);
-
-  // Re-run AI classification on demand
-  const handleReAskAiClassification = () => {
-    setIsClassifyingAi(true);
-    askAiToClassifyIndustry(baseCompanyProfile.ticker, baseCompanyProfile.name, baseCompanyProfile.sector)
-      .then((res) => {
-        setSelectedLens(res.lens);
-        setIsClassifyingAi(false);
-        setAiLensNote(res.note || `AI classified as ${res.lens}`);
-        setNotification(`AI Agent re-evaluated ${companyProfile.ticker}: assigned to ${res.lens} lens.`);
-        setTimeout(() => setNotification(null), 4000);
-      })
-      .catch(() => {
-        setIsClassifyingAi(false);
-      });
-  };
 
   const handleSelectIndustryLens = (lens: IndustryLens) => {
     setSelectedLens(lens);
@@ -154,7 +125,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   // Synchronize live Yahoo Finance Telemetry
   React.useEffect(() => {
     let active = true;
-    fetchLiveYahooQuote(companyProfile.ticker, companyProfile.stockPrice).then((quote) => {
+    fetchLiveYahooQuote(currentTicker).then((quote) => {
       if (active) {
         setLiveQuote(quote);
       }
@@ -162,7 +133,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     return () => {
       active = false;
     };
-  }, [companyProfile.ticker, companyProfile.stockPrice]);
+  }, [currentTicker]);
 
   // Automated welcome toast for logged-in user
   React.useEffect(() => {
@@ -332,32 +303,26 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         )}
 
-        {/* 7-Industry Forensic Lens Switcher & AI Directive */}
-        <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-sm">
+        {/* Sector Forensic Taxonomy & Automatic Industry Allocation */}
+        <div className="bg-slate-900 border border-slate-800 p-3.5 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-sm">
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-400">
-              <Bot className="h-4 w-4" />
+            <div className="p-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400">
+              <ShieldAlert className="h-4 w-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-white uppercase tracking-wider">
-                  AI Industry Lens (7 Sectors)
+                <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+                  Governing Forensic Lens
                 </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                  Active: {companyProfile.lens}
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-red-500/15 text-red-400 border border-red-500/30 font-semibold">
+                  {companyProfile.lens}
                 </span>
-                {isClassifyingAi ? (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-mono text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/30 animate-pulse">
-                    Asking AI to Pick...
-                  </span>
-                ) : aiClassificationNote ? (
-                  <span className="text-[11px] text-emerald-400 hidden lg:inline">
-                    ✓ {aiClassificationNote}
-                  </span>
-                ) : null}
+                <span className="text-[11px] text-emerald-400 hidden sm:inline font-mono">
+                  ✓ Automatically allocated ({companyProfile.sector})
+                </span>
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                Every verified company is audited across 30 flags specifically mapped to its industry lens.
+                Every verified company is audited across 30 sector-specific Red Flags. Click any lens to audit alternate sector frameworks.
               </p>
             </div>
           </div>
@@ -369,23 +334,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 onClick={() => handleSelectIndustryLens(lens)}
                 className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                   companyProfile.lens === lens
-                    ? 'bg-red-500 text-white shadow-sm font-semibold'
+                    ? 'bg-red-600 text-white shadow-sm font-semibold'
                     : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
                 }`}
               >
                 {lens}
               </button>
             ))}
-
-            <button
-              onClick={handleReAskAiClassification}
-              disabled={isClassifyingAi}
-              className="ml-1 flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-50 shadow-sm"
-              title="Instruct GPT-4o to classify company into 1 of the 7 industries"
-            >
-              <Sparkles className="h-3 w-3 text-purple-200" />
-              <span>{isClassifyingAi ? 'GPT-4o Classifying...' : 'Ask GPT-4o to Pick'}</span>
-            </button>
           </div>
         </div>
 
@@ -675,6 +630,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           setNotification(`Profile updated: ${updated.name}`);
           setTimeout(() => setNotification(null), 3000);
         }}
+      />
+
+      <CalculationTransparencyModal
+        isOpen={isProofModalOpen}
+        onClose={() => setIsProofModalOpen(false)}
+        company={companyProfile}
       />
 
       {/* Toned Down, Clean Footer */}

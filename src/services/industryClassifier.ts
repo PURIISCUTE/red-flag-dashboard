@@ -354,89 +354,35 @@ export function inferIndustryHeuristic(ticker: string, companyName?: string, sec
 }
 
 /**
- * Asks the AI agent to pick exactly 1 of the 7 industries for a verified company.
- * Uses the server-side proxy route /api/ai/classify-industry (powered by Gemini API).
+ * Automatically allocates exactly 1 of the 7 industry lenses based on company industry/sector.
+ * Deterministic institutional taxonomy (No LLM/GPT dependency).
+ */
+export function automaticallyAllocateIndustryLens(
+  ticker: string,
+  companyName?: string,
+  sector?: string
+): IndustryLens {
+  const tUpper = ticker.toUpperCase().trim();
+  if (CLASSIFICATION_CACHE.has(tUpper)) {
+    return CLASSIFICATION_CACHE.get(tUpper)!;
+  }
+  const lens = inferIndustryHeuristic(tUpper, companyName, sector);
+  CLASSIFICATION_CACHE.set(tUpper, lens);
+  return lens;
+}
+
+/**
+ * Backward-compatible automatic allocator (satisfies callers without LLM/GPT dependency).
  */
 export async function askAiToClassifyIndustry(
   ticker: string,
   companyName: string,
   sector?: string
 ): Promise<{ lens: IndustryLens; isFromAi: boolean; note?: string }> {
-  const cacheKey = `ai_lens_${ticker.toUpperCase()}`;
-
-  // Check in-memory cache
-  if (CLASSIFICATION_CACHE.has(ticker.toUpperCase())) {
-    return {
-      lens: CLASSIFICATION_CACHE.get(ticker.toUpperCase())!,
-      isFromAi: true,
-      note: 'Retrieved from AI audit session cache'
-    };
-  }
-
-  // Check browser localStorage
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = localStorage.getItem(cacheKey);
-      if (stored && VALID_7_LENSES.includes(stored as IndustryLens)) {
-        CLASSIFICATION_CACHE.set(ticker.toUpperCase(), stored as IndustryLens);
-        return {
-          lens: stored as IndustryLens,
-          isFromAi: true,
-          note: 'Retrieved from local AI verification history'
-        };
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  // Primary: Ask server-side Gemini AI via /api/ai/classify-industry
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
-
-    const response = await fetch('/api/ai/classify-industry', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ticker,
-        companyName,
-        sector
-      }),
-      signal: controller.signal
-    });
-
-    clearTimeout(timeout);
-
-    if (response.ok) {
-      const data = await response.json();
-      if (data && data.lens && VALID_7_LENSES.includes(data.lens)) {
-        const chosenLens = data.lens as IndustryLens;
-        CLASSIFICATION_CACHE.set(ticker.toUpperCase(), chosenLens);
-        if (typeof window !== 'undefined') {
-          try {
-            localStorage.setItem(cacheKey, chosenLens);
-          } catch {
-            // ignore
-          }
-        }
-        return {
-          lens: chosenLens,
-          isFromAi: true,
-          note: data.reasoning ? `${data.reasoning} [Verified by ${(data.model || 'GPT-4o').toUpperCase()}]` : `Classified by GPT-4o into ${chosenLens}`
-        };
-      }
-    }
-  } catch {
-    // Graceful fallback to verified taxonomy and semantic heuristic
-  }
-
-  // High-accuracy fallback
-  const fallback = inferIndustryHeuristic(ticker, companyName, sector);
-  CLASSIFICATION_CACHE.set(ticker.toUpperCase(), fallback);
+  const lens = automaticallyAllocateIndustryLens(ticker, companyName, sector);
   return {
-    lens: fallback,
+    lens,
     isFromAi: false,
-    note: `Categorized under ${fallback} via RedFlag institutional forensic taxonomy`
+    note: `Automatically allocated to ${lens} based on sector classification`
   };
 }

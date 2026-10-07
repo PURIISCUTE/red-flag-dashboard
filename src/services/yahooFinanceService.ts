@@ -69,7 +69,9 @@ export async function fetchLiveYahooQuote(ticker: string, fallbackPrice = 150.0)
         const price = Math.round(Number(meta.regularMarketPrice) * 100) / 100;
         const prevClose = meta.previousClose || meta.chartPreviousClose || price;
         const change = Math.round((price - prevClose) * 100) / 100;
-        const changePercent = Math.round(((price - prevClose) / (prevClose || 1)) * 10000) / 100;
+        const changePercent = meta.regularMarketChangePercent !== undefined
+          ? Math.round(Number(meta.regularMarketChangePercent) * 100) / 100
+          : Math.round(((price - prevClose) / (prevClose || 1)) * 10000) / 100;
 
         return {
           ticker: cleanTicker,
@@ -108,7 +110,9 @@ export async function fetchLiveYahooQuote(ticker: string, fallbackPrice = 150.0)
         const price = Math.round(Number(meta.regularMarketPrice) * 100) / 100;
         const prevClose = meta.previousClose || meta.chartPreviousClose || price;
         const change = Math.round((price - prevClose) * 100) / 100;
-        const changePercent = Math.round(((price - prevClose) / (prevClose || 1)) * 10000) / 100;
+        const changePercent = meta.regularMarketChangePercent !== undefined
+          ? Math.round(Number(meta.regularMarketChangePercent) * 100) / 100
+          : Math.round(((price - prevClose) / (prevClose || 1)) * 10000) / 100;
 
         return {
           ticker: cleanTicker,

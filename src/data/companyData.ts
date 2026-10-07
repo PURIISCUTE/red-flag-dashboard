@@ -2,6 +2,7 @@ import { CompanyForensicProfile, FinancialYearData, ForensicFlag, IndustryLens, 
 import { ALL_FLAG_DEFINITIONS } from './forensicFlags210';
 import { isTickerInNyseOrNasdaq, getNyseNasdaqCompany, TOP_NYSE_NASDAQ_COMPANIES } from './nyseNasdaqRegistry';
 import { inferIndustryHeuristic } from '../services/industryClassifier';
+import { recalculateCompanyProfileForensics } from '../services/forensicCalculations';
 
 // Deterministic company profiles with audited historicals from FY22 to FY26 + TTM
 export const PRELOADED_COMPANIES: Record<string, CompanyForensicProfile> = {
@@ -1558,11 +1559,8 @@ export function getDeterministicCompanyProfile(rawTicker: string): CompanyForens
   }
   
   if (PRELOADED_COMPANIES[ticker]) {
-    const profile = JSON.parse(JSON.stringify(PRELOADED_COMPANIES[ticker])) as CompanyForensicProfile;
-    // Clean rounding for all metrics to avoid floating-point artifacts
-    profile.altmanZScore = Math.round(Number(profile.altmanZScore) * 100) / 100;
-    profile.beneishMScore = Math.round(Number(profile.beneishMScore) * 100) / 100;
-    profile.sloanAccrualRatio = Math.round(Number(profile.sloanAccrualRatio) * 1000) / 1000;
+    let profile = JSON.parse(JSON.stringify(PRELOADED_COMPANIES[ticker])) as CompanyForensicProfile;
+    profile = recalculateCompanyProfileForensics(profile);
     // Generate deterministic 30 red flags for this sector
     profile.flags = generateDeterministicFlags(profile);
     return profile;
@@ -1625,7 +1623,7 @@ export function getDeterministicCompanyProfile(rawTicker: string): CompanyForens
   };
 
   profile.flags = generateDeterministicFlags(profile);
-  return profile;
+  return recalculateCompanyProfileForensics(profile);
 }
 
 function hashString(str: string): number {

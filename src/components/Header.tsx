@@ -100,7 +100,7 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="font-bold text-white">{currentCompany.ticker}</span>
           <span className="text-white font-semibold">${currentCompany.stockPrice.toFixed(2)}</span>
           <span className={currentCompany.priceChangePercent >= 0 ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold'}>
-            {currentCompany.priceChangePercent >= 0 ? '+' : ''}{currentCompany.priceChangePercent}%
+            {currentCompany.priceChangePercent >= 0 ? '+' : ''}{Number(currentCompany.priceChangePercent).toFixed(2)}%
           </span>
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse ml-0.5"></span>
         </div>
