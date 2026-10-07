@@ -146,6 +146,17 @@ export const SignupPage: React.FC<SignupPageProps> = ({
             <span className="font-semibold">Sign up with Google</span>
           </button>
 
+          {/* Quick Client Demonstration 1-Click Access */}
+          <button
+            type="button"
+            onClick={handleGoogleSignUp}
+            disabled={isLoading}
+            className="w-full py-2 px-3 bg-red-500/10 hover:bg-red-500/20 text-red-300 hover:text-white border border-red-500/30 rounded-lg text-xs font-mono font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Zap className="h-3.5 w-3.5 text-red-400" />
+            <span>Instant Client Demo Access (1-Click)</span>
+          </button>
+
           {/* Divider */}
           <div className="relative text-center">
             <div className="absolute inset-0 flex items-center">

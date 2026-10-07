@@ -10,11 +10,14 @@ import {
   User
 } from 'lucide-react';
 import { CompanyForensicProfile, UserSession } from '../types';
+import { LiveYahooQuote } from '../services/yahooFinanceService';
 import { Logo } from './Logo';
 import { TickerSearch } from './TickerSearch';
 
 interface HeaderProps {
   currentCompany: CompanyForensicProfile;
+  liveQuote?: LiveYahooQuote | null;
+  onRefreshLiveQuote?: () => void;
   onSelectCompany: (ticker: string) => void;
   onOpenPriorityModal: () => void;
   onOpenLiveScan: () => void;
@@ -30,6 +33,8 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   currentCompany,
+  liveQuote,
+  onRefreshLiveQuote,
   onSelectCompany,
   onOpenPriorityModal,
   onOpenLiveScan,
@@ -43,6 +48,20 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout
 }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSyncClick = () => {
+    if (onRefreshLiveQuote) {
+      setIsSyncing(true);
+      onRefreshLiveQuote();
+      setTimeout(() => setIsSyncing(false), 1000);
+    }
+  };
+
+  const isUp = (currentCompany.priceChangePercent ?? 0) >= 0;
+  const dollarChange = liveQuote?.regularMarketChange !== undefined
+    ? liveQuote.regularMarketChange
+    : Math.round((currentCompany.stockPrice * ((currentCompany.priceChangePercent ?? 0) / 100)) * 100) / 100;
 
   return (
     <header className="border-b border-slate-800/80 bg-slate-950/90 backdrop-blur sticky top-0 z-40">
@@ -95,14 +114,24 @@ export const Header: React.FC<HeaderProps> = ({
           />
         </div>
 
-        {/* Active Stock Quote Pill */}
-        <div className="hidden lg:flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg font-mono text-xs shrink-0">
+        {/* Active Stock Quote Pill matching Yahoo Finance */}
+        <div className="hidden sm:flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg font-mono text-xs shrink-0">
           <span className="font-bold text-white">{currentCompany.ticker}</span>
           <span className="text-white font-semibold">${currentCompany.stockPrice.toFixed(2)}</span>
-          <span className={currentCompany.priceChangePercent >= 0 ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold'}>
-            {currentCompany.priceChangePercent >= 0 ? '+' : ''}{Number(currentCompany.priceChangePercent).toFixed(2)}%
+          <span className={`font-semibold ${isUp ? 'text-emerald-400' : 'text-red-400'}`}>
+            {isUp ? '+' : ''}${Math.abs(dollarChange).toFixed(2)} ({isUp ? '+' : ''}{Number(currentCompany.priceChangePercent).toFixed(2)}%)
           </span>
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse ml-0.5"></span>
+          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse ml-0.5" title="Live streaming from Yahoo Finance"></span>
+          {onRefreshLiveQuote && (
+            <button
+              onClick={handleSyncClick}
+              disabled={isSyncing}
+              className="text-slate-500 hover:text-slate-300 ml-1 transition-colors cursor-pointer"
+              title="Force immediate Yahoo Finance quote sync"
+            >
+              <Zap className={`h-3 w-3 ${isSyncing ? 'text-amber-400 animate-bounce' : ''}`} />
+            </button>
+          )}
         </div>
 
         {/* Action Controls */}

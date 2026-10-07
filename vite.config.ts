@@ -74,6 +74,9 @@ function financialApiPlugin(_env: Record<string, string>): Plugin {
               }
               res.setHeader('Content-Type', 'application/json');
               res.setHeader('Access-Control-Allow-Origin', '*');
+              res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+              res.setHeader('Pragma', 'no-cache');
+              res.setHeader('Expires', '0');
               res.end(JSON.stringify(data));
               return;
             }
@@ -82,6 +85,7 @@ function financialApiPlugin(_env: Record<string, string>): Plugin {
           }
           res.statusCode = 502;
           res.setHeader('Content-Type', 'application/json');
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
           res.end(JSON.stringify({ error: 'Quote unavailable' }));
           return;
         }
@@ -115,6 +119,9 @@ function financialApiPlugin(_env: Record<string, string>): Plugin {
               }
               res.setHeader('Content-Type', 'application/json');
               res.setHeader('Access-Control-Allow-Origin', '*');
+              res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+              res.setHeader('Pragma', 'no-cache');
+              res.setHeader('Expires', '0');
               res.end(JSON.stringify(data));
               return;
             }
@@ -123,6 +130,7 @@ function financialApiPlugin(_env: Record<string, string>): Plugin {
           }
           res.statusCode = 502;
           res.setHeader('Content-Type', 'application/json');
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
           res.end(JSON.stringify({ error: 'Chart data unavailable' }));
           return;
         }

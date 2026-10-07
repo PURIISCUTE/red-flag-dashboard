@@ -15,6 +15,13 @@ export interface LiveYahooQuote {
   marketCap?: number;
   currency: string;
   exchangeName: string;
+  companyName?: string;
+  dayHigh: number;
+  dayLow: number;
+  fiftyTwoWeekHigh?: number;
+  fiftyTwoWeekLow?: number;
+  previousClose: number;
+  openPrice: number;
   timestamp: string;
   source: 'Live Yahoo Finance API' | 'SEC EDGAR XBRL Calibrated Model';
   isLiveNetwork: boolean;
@@ -54,24 +61,39 @@ export async function fetchLiveYahooQuote(ticker: string, fallbackPrice = 150.0)
   const cleanTicker = ticker.toUpperCase().trim();
   const timestamp = new Date().toLocaleTimeString();
 
-  // 1. Try local server proxy endpoint
+  // 1. Query server proxy with cache-busting timestamp for real-time live data
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-    const response = await fetch(`/api/quote/${cleanTicker}`, { signal: controller.signal });
+    const response = await fetch(`/api/quote/${cleanTicker}?_t=${Date.now()}`, { 
+      signal: controller.signal,
+      headers: { 'Cache-Control': 'no-cache' }
+    });
     clearTimeout(timeoutId);
 
     if (response.ok) {
       const data = await response.json();
       const meta = data?.chart?.result?.[0]?.meta;
-      if (meta && meta.regularMarketPrice) {
-        const price = Math.round(Number(meta.regularMarketPrice) * 100) / 100;
+      if (meta && meta.regularMarketPrice !== undefined && meta.regularMarketPrice !== null) {
+        const rawPrice = Number(meta.regularMarketPrice);
+        const price = Math.round(rawPrice * 100) / 100;
         const prevClose = meta.previousClose || meta.chartPreviousClose || price;
-        const change = Math.round((price - prevClose) * 100) / 100;
+        
+        // Exact fullday change matching Yahoo Finance web terminal
+        const change = meta.fulldayChange !== undefined
+          ? Math.round(Number(meta.fulldayChange) * 100) / 100
+          : Math.round((price - prevClose) * 100) / 100;
+          
         const changePercent = meta.regularMarketChangePercent !== undefined
           ? Math.round(Number(meta.regularMarketChangePercent) * 100) / 100
           : Math.round(((price - prevClose) / (prevClose || 1)) * 10000) / 100;
+
+        const dayHigh = meta.regularMarketDayHigh ? Math.round(Number(meta.regularMarketDayHigh) * 100) / 100 : Math.max(price, prevClose);
+        const dayLow = meta.regularMarketDayLow ? Math.round(Number(meta.regularMarketDayLow) * 100) / 100 : Math.min(price, prevClose);
+        const fiftyTwoWeekHigh = meta.fiftyTwoWeekHigh ? Math.round(Number(meta.fiftyTwoWeekHigh) * 100) / 100 : undefined;
+        const fiftyTwoWeekLow = meta.fiftyTwoWeekLow ? Math.round(Number(meta.fiftyTwoWeekLow) * 100) / 100 : undefined;
+        const openPrice = meta.regularMarketOpen ? Math.round(Number(meta.regularMarketOpen) * 100) / 100 : prevClose;
 
         return {
           ticker: cleanTicker,
@@ -81,7 +103,14 @@ export async function fetchLiveYahooQuote(ticker: string, fallbackPrice = 150.0)
           regularMarketVolume: meta.regularMarketVolume || 1000000,
           marketCap: meta.marketCap ? Math.round((meta.marketCap / 1e9) * 10) / 10 : undefined,
           currency: meta.currency || 'USD',
-          exchangeName: meta.exchangeName || 'NYSE / NASDAQ',
+          exchangeName: meta.fullExchangeName || meta.exchangeName || 'NYSE / NASDAQ',
+          companyName: meta.longName || meta.shortName,
+          dayHigh,
+          dayLow,
+          fiftyTwoWeekHigh,
+          fiftyTwoWeekLow,
+          previousClose: Math.round(prevClose * 100) / 100,
+          openPrice,
           timestamp,
           source: 'Live Yahoo Finance API',
           isLiveNetwork: true
@@ -89,16 +118,16 @@ export async function fetchLiveYahooQuote(ticker: string, fallbackPrice = 150.0)
       }
     }
   } catch {
-    // try fallback
+    // try direct fallback
   }
 
   // 2. Direct query fallback
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
 
     const response = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${cleanTicker}?interval=1d&range=1d`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${cleanTicker}?interval=1d&range=1d&_t=${Date.now()}`,
       { signal: controller.signal }
     );
     clearTimeout(timeoutId);
@@ -106,13 +135,22 @@ export async function fetchLiveYahooQuote(ticker: string, fallbackPrice = 150.0)
     if (response.ok) {
       const data = await response.json();
       const meta = data?.chart?.result?.[0]?.meta;
-      if (meta && meta.regularMarketPrice) {
-        const price = Math.round(Number(meta.regularMarketPrice) * 100) / 100;
+      if (meta && meta.regularMarketPrice !== undefined) {
+        const rawPrice = Number(meta.regularMarketPrice);
+        const price = Math.round(rawPrice * 100) / 100;
         const prevClose = meta.previousClose || meta.chartPreviousClose || price;
-        const change = Math.round((price - prevClose) * 100) / 100;
+        const change = meta.fulldayChange !== undefined
+          ? Math.round(Number(meta.fulldayChange) * 100) / 100
+          : Math.round((price - prevClose) * 100) / 100;
         const changePercent = meta.regularMarketChangePercent !== undefined
           ? Math.round(Number(meta.regularMarketChangePercent) * 100) / 100
           : Math.round(((price - prevClose) / (prevClose || 1)) * 10000) / 100;
+
+        const dayHigh = meta.regularMarketDayHigh ? Math.round(Number(meta.regularMarketDayHigh) * 100) / 100 : Math.max(price, prevClose);
+        const dayLow = meta.regularMarketDayLow ? Math.round(Number(meta.regularMarketDayLow) * 100) / 100 : Math.min(price, prevClose);
+        const fiftyTwoWeekHigh = meta.fiftyTwoWeekHigh ? Math.round(Number(meta.fiftyTwoWeekHigh) * 100) / 100 : undefined;
+        const fiftyTwoWeekLow = meta.fiftyTwoWeekLow ? Math.round(Number(meta.fiftyTwoWeekLow) * 100) / 100 : undefined;
+        const openPrice = meta.regularMarketOpen ? Math.round(Number(meta.regularMarketOpen) * 100) / 100 : prevClose;
 
         return {
           ticker: cleanTicker,
@@ -122,7 +160,14 @@ export async function fetchLiveYahooQuote(ticker: string, fallbackPrice = 150.0)
           regularMarketVolume: meta.regularMarketVolume || 1000000,
           marketCap: meta.marketCap ? Math.round((meta.marketCap / 1e9) * 10) / 10 : undefined,
           currency: meta.currency || 'USD',
-          exchangeName: meta.exchangeName || 'NYSE / NASDAQ',
+          exchangeName: meta.fullExchangeName || meta.exchangeName || 'NYSE / NASDAQ',
+          companyName: meta.longName || meta.shortName,
+          dayHigh,
+          dayLow,
+          fiftyTwoWeekHigh,
+          fiftyTwoWeekLow,
+          previousClose: Math.round(prevClose * 100) / 100,
+          openPrice,
           timestamp,
           source: 'Live Yahoo Finance API',
           isLiveNetwork: true
@@ -142,6 +187,12 @@ export async function fetchLiveYahooQuote(ticker: string, fallbackPrice = 150.0)
     regularMarketVolume: 48200000,
     currency: 'USD',
     exchangeName: 'NYSE / NASDAQ',
+    dayHigh: +(fallbackPrice * 1.018).toFixed(2),
+    dayLow: +(fallbackPrice * 0.988).toFixed(2),
+    fiftyTwoWeekHigh: +(fallbackPrice * 1.25).toFixed(2),
+    fiftyTwoWeekLow: +(fallbackPrice * 0.78).toFixed(2),
+    previousClose: +(fallbackPrice * 0.988).toFixed(2),
+    openPrice: +(fallbackPrice * 0.995).toFixed(2),
     timestamp,
     source: 'SEC EDGAR XBRL Calibrated Model',
     isLiveNetwork: false
@@ -250,11 +301,24 @@ function parseYahooChartResponse(
     const periodStartPrice = points[0].close;
     const prevClose = meta.previousClose || meta.chartPreviousClose || periodStartPrice;
     
+    // In 1D mode, synchronize the latest candle directly with live market price
+    if (timeframe === '1D' && points.length > 0) {
+      const lastPoint = points[points.length - 1];
+      lastPoint.close = latestPrice;
+      if (latestPrice > lastPoint.high) lastPoint.high = latestPrice;
+      if (latestPrice < lastPoint.low) lastPoint.low = latestPrice;
+    }
+
     // In 1D mode, return is ALWAYS measured vs previous close (matching Yahoo Finance)
     // In multi-period modes (5D, 1M, 6M, YTD, 1Y, 5Y, MAX), return is measured vs period start
     const is1D = timeframe === '1D';
-    const dayPriceChange = Math.round((latestPrice - prevClose) * 100) / 100;
-    const dayPriceChangePercent = Math.round(((latestPrice - prevClose) / (prevClose || 1)) * 10000) / 100;
+    const dayPriceChange = meta.fulldayChange !== undefined
+      ? Math.round(Number(meta.fulldayChange) * 100) / 100
+      : Math.round((latestPrice - prevClose) * 100) / 100;
+
+    const dayPriceChangePercent = meta.regularMarketChangePercent !== undefined
+      ? Math.round(Number(meta.regularMarketChangePercent) * 100) / 100
+      : Math.round(((latestPrice - prevClose) / (prevClose || 1)) * 10000) / 100;
 
     const periodChange = Math.round((latestPrice - periodStartPrice) * 100) / 100;
     const periodChangePercent = Math.round(((latestPrice - periodStartPrice) / (periodStartPrice || 1)) * 10000) / 100;
@@ -274,11 +338,11 @@ function parseYahooChartResponse(
       currentPrice: latestPrice,
       periodStartPrice,
       previousClose: prevClose,
-      openPrice: points[0].open,
-      dayHigh: meta.regularMarketDayHigh || highPrice,
-      dayLow: meta.regularMarketDayLow || lowPrice,
-      fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh,
-      fiftyTwoWeekLow: meta.fiftyTwoWeekLow,
+      openPrice: meta.regularMarketOpen ? Math.round(Number(meta.regularMarketOpen) * 100) / 100 : points[0].open,
+      dayHigh: meta.regularMarketDayHigh ? Math.round(Number(meta.regularMarketDayHigh) * 100) / 100 : highPrice,
+      dayLow: meta.regularMarketDayLow ? Math.round(Number(meta.regularMarketDayLow) * 100) / 100 : lowPrice,
+      fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh ? Math.round(Number(meta.fiftyTwoWeekHigh) * 100) / 100 : undefined,
+      fiftyTwoWeekLow: meta.fiftyTwoWeekLow ? Math.round(Number(meta.fiftyTwoWeekLow) * 100) / 100 : undefined,
       volume: meta.regularMarketVolume || points.reduce((acc, p) => acc + p.volume, 0),
       marketCap: meta.marketCap ? Math.round((meta.marketCap / 1e9) * 10) / 10 : undefined,
       priceChange,
@@ -453,14 +517,16 @@ export async function fetchLiveStockChart(
   ticker: string,
   timeframe: ChartTimeframe = '1D',
   fallbackData?: StockChartPoint[],
-  currentPriceHint?: number
+  currentPriceHint?: number,
+  forceRefresh = false
 ): Promise<LiveChartResult> {
   const cleanTicker = ticker.toUpperCase().trim();
   const cacheKey = `${cleanTicker}_${timeframe}`;
 
-  // Check cache (valid for 60 seconds)
+  // Check cache (3.5s for 1D to capture live fluctuating ticks, 30s for historical periods)
+  const maxCacheAge = timeframe === '1D' ? 3500 : 30000;
   const cached = chartMemoryCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < 60000) {
+  if (!forceRefresh && cached && Date.now() - cached.timestamp < maxCacheAge) {
     return cached.result;
   }
   
@@ -492,14 +558,17 @@ export async function fetchLiveStockChart(
     interval = '1mo';
   }
 
-  // 1. Try local server proxy endpoint
+  // 1. Try local server proxy endpoint with cache buster
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 6000);
 
     const response = await fetch(
-      `/api/chart/${cleanTicker}?range=${range}&interval=${interval}`,
-      { signal: controller.signal }
+      `/api/chart/${cleanTicker}?range=${range}&interval=${interval}&_t=${Date.now()}`,
+      { 
+        signal: controller.signal,
+        headers: { 'Cache-Control': 'no-cache' }
+      }
     );
     clearTimeout(timeoutId);
 
@@ -521,7 +590,7 @@ export async function fetchLiveStockChart(
     const timeoutId = setTimeout(() => controller.abort(), 4000);
 
     const response = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${cleanTicker}?range=${range}&interval=${interval}`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${cleanTicker}?range=${range}&interval=${interval}&_t=${Date.now()}`,
       { signal: controller.signal }
     );
     clearTimeout(timeoutId);

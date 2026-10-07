@@ -122,18 +122,36 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     setTimeout(() => setNotification(null), 3500);
   };
 
-  // Synchronize live Yahoo Finance Telemetry
+  // Synchronize live Yahoo Finance Telemetry continuously (5s polling for real-time fluctuations)
   React.useEffect(() => {
     let active = true;
-    fetchLiveYahooQuote(currentTicker).then((quote) => {
-      if (active) {
-        setLiveQuote(quote);
-      }
-    });
+
+    const pullLiveQuote = () => {
+      fetchLiveYahooQuote(currentTicker).then((quote) => {
+        if (active && quote) {
+          setLiveQuote(quote);
+        }
+      });
+    };
+
+    pullLiveQuote();
+    const intervalId = setInterval(pullLiveQuote, 5000);
+
     return () => {
       active = false;
+      clearInterval(intervalId);
     };
   }, [currentTicker]);
+
+  const handleForceSyncLiveQuote = () => {
+    fetchLiveYahooQuote(currentTicker).then((quote) => {
+      if (quote) {
+        setLiveQuote(quote);
+        setNotification(`Synchronized real-time quote for ${currentTicker}: $${quote.regularMarketPrice.toFixed(2)} (${quote.regularMarketChange >= 0 ? '+' : ''}$${quote.regularMarketChange.toFixed(2)} / ${quote.regularMarketChangePercent >= 0 ? '+' : ''}${quote.regularMarketChangePercent.toFixed(2)}%)`);
+        setTimeout(() => setNotification(null), 3000);
+      }
+    });
+  };
 
   // Automated welcome toast for logged-in user
   React.useEffect(() => {
@@ -272,6 +290,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       {/* Top Application Header */}
       <Header
         currentCompany={companyProfile}
+        liveQuote={liveQuote}
+        onRefreshLiveQuote={handleForceSyncLiveQuote}
         onSelectCompany={handleSelectTickerWithToast}
         onOpenPriorityModal={() => setIsPriorityModalOpen(true)}
         onOpenLiveScan={() => setIsLiveScanOpen(true)}

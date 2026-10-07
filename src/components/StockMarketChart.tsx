@@ -22,6 +22,8 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
   const [chartResult, setChartResult] = useState<LiveChartResult | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
+  const [lastTickDirection, setLastTickDirection] = useState<'up' | 'down' | null>(null);
+  const lastPriceRef = useRef<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Fetch real market historical prices whenever ticker, timeframe or manual refresh triggers
@@ -30,9 +32,15 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
     setIsLoading(true);
     setHoveredIndex(null);
 
-    fetchLiveStockChart(company.ticker, timeframe, company.chartData, company.stockPrice)
+    fetchLiveStockChart(company.ticker, timeframe, company.chartData, company.stockPrice, refreshTrigger > 0)
       .then((res) => {
         if (active) {
+          if (lastPriceRef.current !== null && res.currentPrice !== lastPriceRef.current) {
+            setLastTickDirection(res.currentPrice > lastPriceRef.current ? 'up' : 'down');
+            const flashTimer = setTimeout(() => setLastTickDirection(null), 1500);
+            return () => clearTimeout(flashTimer);
+          }
+          lastPriceRef.current = res.currentPrice;
           setChartResult(res);
           setIsLoading(false);
         }
@@ -47,6 +55,28 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
       active = false;
     };
   }, [company.ticker, timeframe, refreshTrigger, company.stockPrice]);
+
+  // Live polling for 1D chart: Refresh candles every 5 seconds to match live market fluctuations
+  useEffect(() => {
+    if (timeframe !== '1D') return;
+
+    const intervalId = setInterval(() => {
+      fetchLiveStockChart(company.ticker, '1D', company.chartData, company.stockPrice, true)
+        .then((res) => {
+          if (lastPriceRef.current !== null && res.currentPrice !== lastPriceRef.current) {
+            setLastTickDirection(res.currentPrice > lastPriceRef.current ? 'up' : 'down');
+            setTimeout(() => setLastTickDirection(null), 1500);
+          }
+          lastPriceRef.current = res.currentPrice;
+          setChartResult(res);
+        })
+        .catch(() => {
+          // Keep prior candles on intermittent network pause
+        });
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+  }, [company.ticker, timeframe, company.chartData, company.stockPrice]);
 
   const points = useMemo(() => {
     return chartResult?.points || [];
@@ -207,7 +237,7 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
             </span>
             <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>{chartResult?.isLiveNetwork ? 'Live Yahoo Finance Feed' : 'Calibrated Market Feed'}</span>
+              <span>{chartResult?.isLiveNetwork ? 'Live Yahoo Finance Feed (5s Polling)' : 'Calibrated Market Feed'}</span>
             </span>
             {isLoading && (
               <span className="text-[11px] text-red-400 font-mono flex items-center gap-1">
@@ -219,7 +249,13 @@ export const StockMarketChart: React.FC<StockMarketChartProps> = ({ company }) =
 
           {/* Real-Time Price Strip matching Yahoo Finance Quote Header */}
           <div className="flex flex-wrap items-baseline gap-3 mt-1.5">
-            <div className="text-3xl font-bold font-mono text-white tracking-tight">
+            <div className={`text-3xl font-bold font-mono tracking-tight transition-all duration-300 px-2 py-0.5 rounded inline-block ${
+              lastTickDirection === 'up'
+                ? 'text-emerald-300 bg-emerald-500/20 ring-1 ring-emerald-500/50 scale-105'
+                : lastTickDirection === 'down'
+                ? 'text-red-300 bg-red-500/20 ring-1 ring-red-500/50 scale-105'
+                : 'text-white'
+            }`}>
               ${displayPrice.toFixed(2)}
             </div>
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ArrowRight, 
   CheckCircle2, 
@@ -7,6 +7,7 @@ import {
   Building2, 
   Activity, 
   TrendingUp, 
+  TrendingDown,
   ShieldAlert, 
   Calculator,
   Search,
@@ -15,10 +16,12 @@ import {
   Lock,
   ExternalLink,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  Zap
 } from 'lucide-react';
 import { IndustryLens } from '../types';
 import { getDeterministicCompanyProfile } from '../data/companyData';
+import { fetchLiveYahooQuote, LiveYahooQuote } from '../services/yahooFinanceService';
 import { Logo } from '../components/Logo';
 import { TickerSearch } from '../components/TickerSearch';
 
@@ -34,6 +37,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onNavigateToSignup
 }) => {
   const [activeLensTab, setActiveLensTab] = useState<IndustryLens>('Tech Hardware');
+  const [ribbonQuotes, setRibbonQuotes] = useState<Record<string, LiveYahooQuote>>({});
+
+  // Poll live market telemetry for marquee stocks every 5 seconds to match Yahoo Finance exactly
+  useEffect(() => {
+    let active = true;
+    const tickers = ['AAPL', 'NVDA', 'TSLA', 'MSFT', 'PLTR'];
+
+    const pollAll = () => {
+      Promise.all(tickers.map(tk => fetchLiveYahooQuote(tk))).then(results => {
+        if (!active) return;
+        const map: Record<string, LiveYahooQuote> = {};
+        results.forEach(q => {
+          if (q) map[q.ticker] = q;
+        });
+        setRibbonQuotes(map);
+      });
+    };
+
+    pollAll();
+    const interval = setInterval(pollAll, 5000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const FEATURED_DOSSIERS = [
     {
@@ -168,20 +196,37 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </header>
 
-      {/* Live Market & Regulatory Status Ribbon */}
+      {/* Live Market & Regulatory Status Ribbon with Dynamic Yahoo Telemetry */}
       <div className="border-b border-slate-800/80 bg-slate-900/60 px-4 py-2 text-xs font-mono text-slate-400">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span className="text-white font-semibold">SEC EDGAR XBRL Pipeline Active</span>
             <span className="text-slate-600">|</span>
-            <span className="text-slate-400">Live NYSE / NASDAQ Market Telemetry</span>
+            <span className="text-emerald-400 font-medium">Live Yahoo Finance Telemetry (Streaming)</span>
           </div>
-          <div className="flex items-center gap-4 text-[11px] text-slate-400">
-            <span>AAPL: <strong className="text-white">$335.37</strong> <span className="text-emerald-400">+0.52%</span></span>
-            <span>NVDA: <strong className="text-white">$233.95</strong> <span className="text-emerald-400">+1.34%</span></span>
-            <span>TSLA: <strong className="text-white">$370.59</strong> <span className="text-emerald-400">+4.65%</span></span>
-            <span>MSFT: <strong className="text-white">$517.53</strong> <span className="text-emerald-400">+0.92%</span></span>
+          <div className="flex items-center gap-4 text-[11px] text-slate-400 flex-wrap">
+            {(['AAPL', 'NVDA', 'TSLA', 'MSFT', 'PLTR'] as const).map((tk) => {
+              const q = ribbonQuotes[tk];
+              const price = q ? q.regularMarketPrice.toFixed(2) : '...';
+              const chg = q ? q.regularMarketChangePercent : 0;
+              const chgDollar = q ? q.regularMarketChange : 0;
+              const isUp = chg >= 0;
+              return (
+                <button
+                  key={tk}
+                  onClick={() => onNavigateToDashboard(tk)}
+                  className="hover:text-white transition-colors cursor-pointer flex items-center gap-1 bg-slate-950/60 px-2 py-0.5 rounded border border-slate-800"
+                  title={`Open ${tk} Forensic Audit Dossier`}
+                >
+                  <span className="font-bold text-slate-200">{tk}:</span>
+                  <strong className="text-white">${price}</strong>
+                  <span className={isUp ? 'text-emerald-400 font-medium' : 'text-red-400 font-medium'}>
+                    {isUp ? '+' : ''}${Math.abs(chgDollar).toFixed(2)} ({isUp ? '+' : ''}{chg.toFixed(2)}%)
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -284,8 +329,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   </div>
                 </div>
 
-                <div className="text-right">
-                  <div className="text-xs font-mono font-bold text-white">
+                <div className="text-right font-mono">
+                  {ribbonQuotes[item.ticker] && (
+                    <div className="text-xs font-bold mb-1">
+                      <span className="text-white">${ribbonQuotes[item.ticker].regularMarketPrice.toFixed(2)}</span>{' '}
+                      <span className={ribbonQuotes[item.ticker].regularMarketChangePercent >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                        {ribbonQuotes[item.ticker].regularMarketChangePercent >= 0 ? '+' : ''}{ribbonQuotes[item.ticker].regularMarketChangePercent.toFixed(2)}%
+                      </span>
+                    </div>
+                  )}
+                  <div className="text-xs font-bold text-slate-300">
                     Score: {item.score}/100
                   </div>
                   <div className="text-[10px] text-emerald-400 font-medium">Grade {item.grade}</div>
