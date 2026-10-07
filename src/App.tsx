@@ -10,10 +10,11 @@ type PageView = 'landing' | 'login' | 'signup' | 'dashboard';
 export default function App() {
   const [currentPage, setCurrentPage] = useState<PageView>(() => {
     const hash = window.location.hash.replace('#', '').toLowerCase();
-    if (hash === 'landing') return 'landing';
+    if (hash === 'dashboard') return 'dashboard';
     if (hash === 'login') return 'login';
     if (hash === 'signup') return 'signup';
-    return 'dashboard';
+    if (hash === 'landing') return 'landing';
+    return 'landing';
   });
   const [currentTicker, setCurrentTicker] = useState<string>('AAPL');
   const [userSession, setUserSession] = useState<UserSession | null>(() => {

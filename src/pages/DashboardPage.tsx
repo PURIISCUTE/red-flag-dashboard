@@ -41,6 +41,8 @@ import {
 import { AuditGovernanceDossier } from '../components/AuditGovernanceDossier';
 import { InputSheetModal } from '../components/InputSheetModal';
 import { ProfileModal } from '../components/ProfileModal';
+import { SaaSSettingsModal } from '../components/SaaSSettingsModal';
+import { PricingModal } from '../components/PricingModal';
 
 interface DashboardPageProps {
   currentTicker: string;
@@ -67,6 +69,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [isInvestigationQueueOpen, setIsInvestigationQueueOpen] = useState<boolean>(false);
   const [isInputSheetOpen, setIsInputSheetOpen] = useState<boolean>(false);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
+  const [isPricingModalOpen, setIsPricingModalOpen] = useState<boolean>(false);
+  const [pollingIntervalMs, setPollingIntervalMs] = useState<number>(5000);
   const [notification, setNotification] = useState<string | null>(null);
   const [investigationItems, setInvestigationItems] = useState<InvestigationItem[]>([]);
   const [lastScanTime, setLastScanTime] = useState<string>('Just now');
@@ -135,13 +140,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     };
 
     pullLiveQuote();
-    const intervalId = setInterval(pullLiveQuote, 5000);
+    const intervalId = setInterval(pullLiveQuote, pollingIntervalMs);
 
     return () => {
       active = false;
       clearInterval(intervalId);
     };
-  }, [currentTicker]);
+  }, [currentTicker, pollingIntervalMs]);
 
   const handleForceSyncLiveQuote = () => {
     fetchLiveYahooQuote(currentTicker).then((quote) => {
@@ -297,6 +302,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         onOpenLiveScan={() => setIsLiveScanOpen(true)}
         onOpenInvestigationQueue={() => setIsInvestigationQueueOpen(true)}
         onOpenProfileModal={() => setIsProfileModalOpen(true)}
+        onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
+        onOpenPricingModal={() => setIsPricingModalOpen(true)}
         investigationCount={investigationItems.length}
         onExportPdf={handleExportPdf}
         isExportingPdf={isExportingPdf}
@@ -656,6 +663,34 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         isOpen={isProofModalOpen}
         onClose={() => setIsProofModalOpen(false)}
         company={companyProfile}
+      />
+
+      <SaaSSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        userSession={userSession}
+        onUpdateUserSession={(updated) => {
+          if (onUpdateUserSession) {
+            onUpdateUserSession(updated);
+          }
+          setNotification(`Workspace settings saved.`);
+          setTimeout(() => setNotification(null), 3000);
+        }}
+        pollingIntervalMs={pollingIntervalMs}
+        onUpdatePollingInterval={(ms) => {
+          setPollingIntervalMs(ms);
+          setNotification(`Live telemetry polling rate updated to ${ms / 1000} seconds.`);
+          setTimeout(() => setNotification(null), 3000);
+        }}
+      />
+
+      <PricingModal
+        isOpen={isPricingModalOpen}
+        onClose={() => setIsPricingModalOpen(false)}
+        onSelectPlan={(plan) => {
+          setNotification(`Activated 14-day institutional trial for ${plan}!`);
+          setTimeout(() => setNotification(null), 4000);
+        }}
       />
 
       {/* Toned Down, Clean Footer */}

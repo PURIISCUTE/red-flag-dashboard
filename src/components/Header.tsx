@@ -7,7 +7,9 @@ import {
   ChevronDown, 
   Globe, 
   LogOut,
-  User
+  User,
+  Settings,
+  Sparkles
 } from 'lucide-react';
 import { CompanyForensicProfile, UserSession } from '../types';
 import { LiveYahooQuote } from '../services/yahooFinanceService';
@@ -23,6 +25,8 @@ interface HeaderProps {
   onOpenLiveScan: () => void;
   onOpenInvestigationQueue: () => void;
   onOpenProfileModal?: () => void;
+  onOpenSettingsModal?: () => void;
+  onOpenPricingModal?: () => void;
   investigationCount: number;
   onExportPdf: () => void;
   isExportingPdf: boolean;
@@ -40,6 +44,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenLiveScan,
   onOpenInvestigationQueue,
   onOpenProfileModal,
+  onOpenSettingsModal,
+  onOpenPricingModal,
   investigationCount,
   onExportPdf,
   isExportingPdf,
@@ -181,6 +187,17 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
+          {/* Settings Button */}
+          {onOpenSettingsModal && (
+            <button
+              onClick={onOpenSettingsModal}
+              className="p-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
+              title="Workspace Settings & Alert Parameters"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          )}
+
           {/* User Profile Menu */}
           <div className="relative ml-1">
             <button
@@ -197,11 +214,14 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             {isUserMenuOpen && (
-              <div className="absolute right-0 mt-1.5 w-60 bg-slate-900 border border-slate-800 rounded-xl shadow-xl z-50 p-2 font-sans text-xs">
+              <div className="absolute right-0 mt-1.5 w-64 bg-slate-900 border border-slate-800 rounded-xl shadow-xl z-50 p-2 font-sans text-xs">
                 {/* Clean Normal Profile Info Header */}
                 <div className="pb-2.5 border-b border-slate-800 mb-2 px-1">
-                  <div className="font-semibold text-slate-100 truncate text-xs">
-                    {userSession?.name || 'User'}
+                  <div className="font-semibold text-slate-100 truncate text-xs flex items-center justify-between">
+                    <span>{userSession?.name || 'Enterprise Analyst'}</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      SaaS Active
+                    </span>
                   </div>
                   <div className="text-[11px] text-slate-400 truncate">
                     {userSession?.email || 'user@example.com'}
@@ -209,6 +229,35 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
 
                 <div className="space-y-1">
+                  {onOpenSettingsModal && (
+                    <button
+                      onClick={() => {
+                        onOpenSettingsModal();
+                        setIsUserMenuOpen(false);
+                      }}
+                      className="w-full text-left px-2 py-1.5 rounded text-slate-300 hover:bg-slate-800 flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <Settings className="h-3.5 w-3.5 text-slate-400" />
+                      <span>Workspace &amp; API Settings</span>
+                    </button>
+                  )}
+
+                  {onOpenPricingModal && (
+                    <button
+                      onClick={() => {
+                        onOpenPricingModal();
+                        setIsUserMenuOpen(false);
+                      }}
+                      className="w-full text-left px-2 py-1.5 rounded text-slate-300 hover:bg-slate-800 flex items-center justify-between transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                        <span>Membership &amp; Plans</span>
+                      </div>
+                      <span className="text-[10px] text-emerald-400 font-mono font-bold">PRO</span>
+                    </button>
+                  )}
+
                   <button
                     onClick={() => {
                       if (onOpenProfileModal) onOpenProfileModal();

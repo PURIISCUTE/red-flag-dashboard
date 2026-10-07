@@ -24,6 +24,7 @@ import { getDeterministicCompanyProfile } from '../data/companyData';
 import { fetchLiveYahooQuote, LiveYahooQuote } from '../services/yahooFinanceService';
 import { Logo } from '../components/Logo';
 import { TickerSearch } from '../components/TickerSearch';
+import { PricingModal } from '../components/PricingModal';
 
 interface LandingPageProps {
   onNavigateToDashboard: (ticker?: string) => void;
@@ -38,6 +39,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 }) => {
   const [activeLensTab, setActiveLensTab] = useState<IndustryLens>('Tech Hardware');
   const [ribbonQuotes, setRibbonQuotes] = useState<Record<string, LiveYahooQuote>>({});
+  const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
 
   // Poll live market telemetry for marquee stocks every 5 seconds to match Yahoo Finance exactly
   useEffect(() => {
@@ -169,6 +171,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <a href="#taxonomy" className="hover:text-white transition-colors">30 Red Flags Taxonomy</a>
             <a href="#dossiers" className="hover:text-white transition-colors">Forensic Dossiers</a>
             <a href="#pipeline" className="hover:text-white transition-colors">Data Pipeline</a>
+            <button
+              onClick={() => setIsPricingModalOpen(true)}
+              className="text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <Sparkles className="h-3 w-3 text-amber-400" />
+              <span>Pricing &amp; Plans</span>
+            </button>
           </nav>
 
           {/* Action CTAs */}
@@ -549,6 +558,129 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </div>
       </section>
+
+      {/* SaaS Membership Tiers Section */}
+      <section id="pricing" className="py-16 px-4 max-w-7xl mx-auto space-y-8 border-b border-slate-800">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="space-y-2 max-w-2xl">
+            <div className="text-xs font-mono uppercase tracking-wider text-red-400 font-semibold flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+              <span>SaaS Subscriptions</span>
+            </div>
+            <h2 className="text-2xl font-bold text-white">
+              Institutional Forensics Plans for Every Research Scale
+            </h2>
+            <p className="text-xs text-slate-400">
+              Get full access to all 30 sector red flag algorithms, live SEC EDGAR XBRL ingestion, real-time Yahoo Finance price streams, and mathematical calculation proofs.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setIsPricingModalOpen(true)}
+            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors"
+          >
+            <span>Compare All Plan Details</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {/* Plan 1 */}
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between space-y-5">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono text-slate-400">Individual License</span>
+              </div>
+              <h3 className="text-lg font-bold text-white">Forensic Analyst</h3>
+              <p className="text-xs text-slate-400">For equity research analysts, CPAs &amp; short-sellers.</p>
+              <div className="pt-2 font-mono">
+                <span className="text-3xl font-bold text-white">$159</span>
+                <span className="text-xs text-slate-400 font-sans"> / mo (billed annually)</span>
+              </div>
+              <div className="space-y-1.5 text-xs text-slate-300 pt-2 border-t border-slate-800">
+                <div className="flex items-center gap-2">✓ SEC EDGAR Form 10-K &amp; 10-Q XBRL Facts</div>
+                <div className="flex items-center gap-2">✓ Live Yahoo Finance Stock Streaming</div>
+                <div className="flex items-center gap-2">✓ Beneish M-Score &amp; Altman Z-Score Math Proofs</div>
+                <div className="flex items-center gap-2">✓ Up to 100 deep ticker audits / month</div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => onNavigateToDashboard('AAPL')}
+              className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+            >
+              Start 14-Day Free Trial
+            </button>
+          </div>
+
+          {/* Plan 2: Most Popular */}
+          <div className="bg-slate-950 border-2 border-red-500 p-6 rounded-2xl flex flex-col justify-between space-y-5 relative shadow-xl shadow-red-950/20">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold font-mono tracking-wider uppercase">
+              Most Popular for Funds
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono text-red-400">Hedge Fund Core</span>
+              </div>
+              <h3 className="text-lg font-bold text-white">Hedge Fund Pro</h3>
+              <p className="text-xs text-slate-400">For Long/Short equity funds &amp; credit diligence teams.</p>
+              <div className="pt-2 font-mono">
+                <span className="text-3xl font-bold text-white">$399</span>
+                <span className="text-xs text-slate-400 font-sans"> / mo (billed annually)</span>
+              </div>
+              <div className="space-y-1.5 text-xs text-slate-300 pt-2 border-t border-slate-800">
+                <div className="flex items-center gap-2">✓ Unlimited Real-Time Ticker Audits</div>
+                <div className="flex items-center gap-2">✓ 30 Specialized Red Flags across 7 Lenses</div>
+                <div className="flex items-center gap-2">✓ High-Frequency 5-Second Price Ticks</div>
+                <div className="flex items-center gap-2">✓ Interactive Multi-Year Stress Test Simulator</div>
+                <div className="flex items-center gap-2">✓ Up to 5 Institutional Analyst Seats</div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => onNavigateToDashboard('AAPL')}
+              className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl text-xs transition-all shadow-md shadow-red-950/40 cursor-pointer"
+            >
+              Activate Institutional Trial
+            </button>
+          </div>
+
+          {/* Plan 3 */}
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between space-y-5">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono text-slate-400">Enterprise Scale</span>
+              </div>
+              <h3 className="text-lg font-bold text-white">Sovereign Institutional</h3>
+              <p className="text-xs text-slate-400">For asset managers, audit committees &amp; regulators.</p>
+              <div className="pt-2 font-mono">
+                <span className="text-3xl font-bold text-white">$799</span>
+                <span className="text-xs text-slate-400 font-sans"> / mo (billed annually)</span>
+              </div>
+              <div className="space-y-1.5 text-xs text-slate-300 pt-2 border-t border-slate-800">
+                <div className="flex items-center gap-2">✓ Everything in Hedge Fund Pro Included</div>
+                <div className="flex items-center gap-2">✓ Enterprise REST API with Bearer Key Access</div>
+                <div className="flex items-center gap-2">✓ Real-time Slack &amp; Teams Webhook Alerts</div>
+                <div className="flex items-center gap-2">✓ Custom Taxonomy Weighting &amp; Unlimited Seats</div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => onNavigateToDashboard('AAPL')}
+              className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+            >
+              Contact Enterprise Sales
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Institutional Pricing Modal */}
+      <PricingModal
+        isOpen={isPricingModalOpen}
+        onClose={() => setIsPricingModalOpen(false)}
+        onSelectPlan={(plan) => onNavigateToDashboard('AAPL')}
+      />
 
       {/* Institutional Footer */}
       <footer className="py-10 px-4 bg-slate-950 border-t border-slate-800 text-xs text-slate-400 font-sans">
