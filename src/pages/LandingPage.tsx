@@ -515,6 +515,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </span>
             </div>
           </div>
+
+          <div className="pt-3 border-t border-slate-800 flex items-center justify-between flex-wrap gap-2">
+            <span className="text-xs text-slate-400">
+              Explore all 30 audited rules, peer benchmarks &amp; stress tests for this sector.
+            </span>
+            <button
+              onClick={() => {
+                const tickerMap: Record<IndustryLens, string> = {
+                  'AI/Deep Tech': 'NVDA',
+                  'SaaS': 'MSFT',
+                  'Tech Hardware': 'AAPL',
+                  'Retail': 'TSLA',
+                  'Banks': 'JPM',
+                  'Payments': 'V',
+                  'Healthcare': 'PFE'
+                };
+                onNavigateToDashboard(tickerMap[activeLensTab] || 'AAPL');
+              }}
+              className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-semibold flex items-center gap-2 cursor-pointer shadow-sm transition-all"
+            >
+              <span>Explore {activeLensTab} Sub-Page in Terminal</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </section>
 

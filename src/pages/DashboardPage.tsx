@@ -39,6 +39,7 @@ import {
   FileCheck
 } from 'lucide-react';
 import { AuditGovernanceDossier } from '../components/AuditGovernanceDossier';
+import { LensSubPage } from '../components/LensSubPage';
 import { InputSheetModal } from '../components/InputSheetModal';
 import { ProfileModal } from '../components/ProfileModal';
 import { SaaSSettingsModal } from '../components/SaaSSettingsModal';
@@ -53,7 +54,7 @@ interface DashboardPageProps {
   onLogout: () => void;
 }
 
-type ActiveViewModule = 'overview' | 'audit' | 'flags' | 'financials' | 'simulator' | 'filings' | 'all';
+type ActiveViewModule = 'overview' | 'lens_subpage' | 'audit' | 'flags' | 'financials' | 'simulator' | 'filings' | 'all';
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   currentTicker,
@@ -251,6 +252,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       desc: 'Health score, Altman Z, Beneish M-Score & stock price chart'
     },
     {
+      id: 'lens_subpage',
+      label: '7 Industry Lens Sub-Pages',
+      icon: <Layers className="h-4 w-4 text-purple-400" />,
+      desc: 'Dedicated in-depth sub-page for each of the 7 industry lenses with peer matrix & stress models'
+    },
+    {
       id: 'audit',
       label: 'Audit Dossier & Calculation Log',
       icon: <FileCheck className="h-4 w-4 text-cyan-400" />,
@@ -368,6 +375,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 {lens}
               </button>
             ))}
+
+            <button
+              onClick={() => setActiveModule('lens_subpage')}
+              className="ml-1 px-3 py-1 rounded-lg text-xs font-semibold bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 border border-purple-500/40 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+            >
+              <Layers className="h-3.5 w-3.5 text-purple-300" />
+              <span>Explore {companyProfile.lens} Sub-Page</span>
+            </button>
           </div>
         </div>
 
@@ -530,6 +545,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <div className="space-y-5 animate-fadeIn">
               <ExecutiveSummary company={companyProfile} />
               <StockMarketChart company={companyProfile} />
+            </div>
+          )}
+
+          {/* 1.25. Dedicated 7 Industry Lens Sub-Pages */}
+          {(activeModule === 'lens_subpage' || activeModule === 'all') && (
+            <div className="animate-fadeIn">
+              <LensSubPage
+                currentLens={companyProfile.lens}
+                company={companyProfile}
+                onSelectLens={(l) => handleSelectIndustryLens(l)}
+                onSelectCompany={(tk) => handleSelectTickerWithToast(tk)}
+                onToggleInvestigation={handleToggleInvestigation}
+                investigationCodes={investigationItems.map((i) => i.flagCode)}
+              />
             </div>
           )}
 
