@@ -3,26 +3,43 @@ import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { DashboardPage } from './pages/DashboardPage';
-import { UserSession } from './types';
+import { TerminalPage } from './components/TerminalNavbar';
+import { UserSession, IndustryLens } from './types';
 
-type PageView = 'landing' | 'login' | 'signup' | 'dashboard';
+export type PageView = 
+  | 'landing' 
+  | 'login' 
+  | 'signup' 
+  | 'terminal' 
+  | 'lenses' 
+  | 'matrix' 
+  | 'financials' 
+  | 'simulator' 
+  | 'filings' 
+  | 'queue';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<PageView>(() => {
     const hash = window.location.hash.replace('#', '').toLowerCase();
-    if (hash === 'dashboard') return 'dashboard';
     if (hash === 'login') return 'login';
     if (hash === 'signup') return 'signup';
-    if (hash === 'landing') return 'landing';
+    if (hash === 'terminal' || hash === 'dashboard') return 'terminal';
+    if (hash === 'lenses') return 'lenses';
+    if (hash === 'matrix' || hash === 'flags') return 'matrix';
+    if (hash === 'financials') return 'financials';
+    if (hash === 'simulator') return 'simulator';
+    if (hash === 'filings') return 'filings';
+    if (hash === 'queue' || hash === 'investigation') return 'queue';
     return 'landing';
   });
+
   const [currentTicker, setCurrentTicker] = useState<string>('AAPL');
+  const [currentLens, setCurrentLens] = useState<IndustryLens | undefined>(undefined);
   const [userSession, setUserSession] = useState<UserSession | null>(() => {
     try {
       const saved = localStorage.getItem('redflag_user_session');
       if (!saved) return null;
       const parsed = JSON.parse(saved);
-      // Clean up any legacy mock fields like Citadel Risk or Institutional
       delete parsed.organization;
       delete parsed.tier;
       delete parsed.role;
@@ -39,13 +56,18 @@ export default function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '').toLowerCase();
-      if (hash === 'landing') setCurrentPage('landing');
+      if (hash === 'landing' || hash === '') setCurrentPage('landing');
       else if (hash === 'login') setCurrentPage('login');
       else if (hash === 'signup') setCurrentPage('signup');
-      else setCurrentPage('dashboard');
+      else if (hash === 'lenses') setCurrentPage('lenses');
+      else if (hash === 'matrix' || hash === 'flags') setCurrentPage('matrix');
+      else if (hash === 'financials') setCurrentPage('financials');
+      else if (hash === 'simulator') setCurrentPage('simulator');
+      else if (hash === 'filings') setCurrentPage('filings');
+      else if (hash === 'queue' || hash === 'investigation') setCurrentPage('queue');
+      else setCurrentPage('terminal');
     };
 
-    // Check initial hash
     if (window.location.hash) {
       handleHashChange();
     }
@@ -62,11 +84,14 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleLaunchDashboard = (ticker?: string) => {
+  const handleLaunchTerminal = (ticker?: string, page: TerminalPage = 'terminal', lens?: IndustryLens) => {
     if (ticker) {
       setCurrentTicker(ticker.toUpperCase());
     }
-    navigateTo('dashboard');
+    if (lens) {
+      setCurrentLens(lens);
+    }
+    navigateTo(page as PageView);
   };
 
   const handleLoginSuccess = (session: UserSession) => {
@@ -76,7 +101,7 @@ export default function App() {
     } catch (e) {
       console.warn('Failed to persist session to localStorage', e);
     }
-    navigateTo('dashboard');
+    navigateTo('terminal');
   };
 
   const handleSignupSuccess = (session: UserSession) => {
@@ -86,7 +111,7 @@ export default function App() {
     } catch (e) {
       console.warn('Failed to persist session to localStorage', e);
     }
-    navigateTo('dashboard');
+    navigateTo('terminal');
   };
 
   const handleLogout = () => {
@@ -118,6 +143,7 @@ export default function App() {
         onLoginSuccess={handleLoginSuccess}
         onNavigateToSignup={() => navigateTo('signup')}
         onNavigateToLanding={() => navigateTo('landing')}
+        onDirectTerminalAccess={() => navigateTo('terminal')}
       />
     );
   }
@@ -128,15 +154,28 @@ export default function App() {
         onSignupSuccess={handleSignupSuccess}
         onNavigateToLogin={() => navigateTo('login')}
         onNavigateToLanding={() => navigateTo('landing')}
+        onDirectTerminalAccess={() => navigateTo('terminal')}
       />
     );
   }
 
-  if (currentPage === 'dashboard') {
+  // All terminal workspaces (executive overview, 7 lenses, 30 flags matrix, financials, simulator, filings, queue)
+  if (
+    currentPage === 'terminal' ||
+    currentPage === 'lenses' ||
+    currentPage === 'matrix' ||
+    currentPage === 'financials' ||
+    currentPage === 'simulator' ||
+    currentPage === 'filings' ||
+    currentPage === 'queue'
+  ) {
     return (
       <DashboardPage
         currentTicker={currentTicker}
         onSelectTicker={(ticker) => setCurrentTicker(ticker)}
+        activeTerminalPage={currentPage as TerminalPage}
+        onNavigateTerminalPage={(page) => navigateTo(page as PageView)}
+        initialLens={currentLens}
         userSession={userSession}
         onUpdateUserSession={handleUpdateUserSession}
         onNavigateToLanding={() => navigateTo('landing')}
@@ -148,7 +187,7 @@ export default function App() {
   // Default: Professional Cover / Landing Page
   return (
     <LandingPage
-      onNavigateToDashboard={handleLaunchDashboard}
+      onNavigateToTerminal={handleLaunchTerminal}
       onNavigateToLogin={() => navigateTo('login')}
       onNavigateToSignup={() => navigateTo('signup')}
     />

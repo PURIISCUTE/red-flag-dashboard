@@ -17,27 +17,37 @@ import {
   ExternalLink,
   ChevronRight,
   Sparkles,
-  Zap
+  Zap,
+  Cpu,
+  Cloud,
+  HardDrive,
+  ShoppingBag,
+  Building,
+  CreditCard,
+  HeartPulse,
+  BarChart3,
+  Sliders,
+  Check
 } from 'lucide-react';
 import { IndustryLens } from '../types';
-import { getDeterministicCompanyProfile } from '../data/companyData';
 import { fetchLiveYahooQuote, LiveYahooQuote } from '../services/yahooFinanceService';
 import { Logo } from '../components/Logo';
 import { TickerSearch } from '../components/TickerSearch';
 import { PricingModal } from '../components/PricingModal';
+import { TerminalPage } from '../components/TerminalNavbar';
 
 interface LandingPageProps {
-  onNavigateToDashboard: (ticker?: string) => void;
+  onNavigateToTerminal: (ticker?: string, page?: TerminalPage, lens?: IndustryLens) => void;
   onNavigateToLogin: () => void;
   onNavigateToSignup: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
-  onNavigateToDashboard,
+  onNavigateToTerminal,
   onNavigateToLogin,
   onNavigateToSignup
 }) => {
-  const [activeLensTab, setActiveLensTab] = useState<IndustryLens>('Tech Hardware');
+  const [activeLensTab, setActiveLensTab] = useState<IndustryLens>('AI/Deep Tech');
   const [ribbonQuotes, setRibbonQuotes] = useState<Record<string, LiveYahooQuote>>({});
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
 
@@ -47,10 +57,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     const tickers = ['AAPL', 'NVDA', 'TSLA', 'MSFT', 'PLTR'];
 
     const pollAll = () => {
-      Promise.all(tickers.map(tk => fetchLiveYahooQuote(tk))).then(results => {
+      Promise.all(tickers.map((tk) => fetchLiveYahooQuote(tk))).then((results) => {
         if (!active) return;
         const map: Record<string, LiveYahooQuote> = {};
-        results.forEach(q => {
+        results.forEach((q) => {
           if (q) map[q.ticker] = q;
         });
         setRibbonQuotes(map);
@@ -67,19 +77,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   const FEATURED_DOSSIERS = [
     {
-      ticker: 'AAPL',
-      name: 'Apple Inc.',
-      exchange: 'NASDAQ',
-      lens: 'Tech Hardware' as IndustryLens,
-      score: 84,
-      grade: 'A',
-      title: 'Services Margin Expansion & Foundry Purchase Commitments Audit',
-      summary: 'Audited operating cash flow conversion of $118.2B TTM. Scrutinized foundry take-or-pay wafer commitments and tooling depreciation pacing under ASC 606.',
-      mScore: -2.68,
-      zScore: 7.92,
-      accrual: '-5.1%'
-    },
-    {
       ticker: 'NVDA',
       name: 'NVIDIA Corporation',
       exchange: 'NASDAQ',
@@ -87,23 +84,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       score: 71,
       grade: 'B',
       title: 'Hyperscaler Concentration & Unbilled Datacenter Accruals Audit',
-      summary: 'Scrutinized top 3 hyperscaler customers accounting for 38% of accounts receivable. Evaluated compute capacity leasebacks and unbilled inventory pipeline.',
+      summary: 'Scrutinized top 3 hyperscaler customers accounting for 38% of accounts receivable. Evaluated compute capacity leasebacks and unbilled inventory pipeline under ASC 606.',
       mScore: -1.94,
       zScore: 14.8,
       accrual: '+4.8%'
-    },
-    {
-      ticker: 'TSLA',
-      name: 'Tesla Inc.',
-      exchange: 'NASDAQ',
-      lens: 'Retail' as IndustryLens,
-      score: 68,
-      grade: 'B',
-      title: 'Automotive Regulatory Credits & Warranty Reserve Pacing Audit',
-      summary: 'Analyzed regulatory credit margin flattery, deferred FSD revenue recognition under ASC 606, and automotive warranty provision pacing vs fleet growth.',
-      mScore: -1.88,
-      zScore: 6.45,
-      accrual: '+2.4%'
     },
     {
       ticker: 'MSFT',
@@ -117,66 +101,148 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       mScore: -2.55,
       zScore: 8.12,
       accrual: '-3.8%'
+    },
+    {
+      ticker: 'AAPL',
+      name: 'Apple Inc.',
+      exchange: 'NASDAQ',
+      lens: 'Tech Hardware' as IndustryLens,
+      score: 84,
+      grade: 'A',
+      title: 'Services Margin Expansion & Foundry Purchase Commitments Audit',
+      summary: 'Audited operating cash flow conversion of $118.2B TTM. Scrutinized foundry take-or-pay wafer commitments and tooling depreciation pacing under ASC 606.',
+      mScore: -2.68,
+      zScore: 7.92,
+      accrual: '-5.1%'
+    },
+    {
+      ticker: 'TSLA',
+      name: 'Tesla Inc.',
+      exchange: 'NASDAQ',
+      lens: 'Retail' as IndustryLens,
+      score: 68,
+      grade: 'B',
+      title: 'Automotive Regulatory Credits & Warranty Reserve Pacing Audit',
+      summary: 'Analyzed regulatory credit margin flattery, deferred FSD revenue recognition under ASC 606, and automotive warranty provision pacing vs fleet growth.',
+      mScore: -1.88,
+      zScore: 6.45,
+      accrual: '+2.4%'
     }
   ];
 
-  const lensExamples: Record<IndustryLens, { flags: string[]; formula: string; secCitation: string }> = {
-    'Tech Hardware': {
-      flags: ['Foundry Take-or-Pay Purchase Commitment Overhang', 'Warranty Liability Reserve Under-Funding', 'Fab Tooling Impairment Delay'],
-      formula: 'Unconditional Purchase Obligations / TTM Cash Flow from Operations > 1.4x',
-      secCitation: '10-K Note 11 — Commitments and Contingencies (Foundry Wafers)'
+  const LENS_DETAILS: Record<IndustryLens, {
+    icon: React.ReactNode;
+    tagline: string;
+    criticalFlags: string[];
+    sampleFormula: string;
+    secSource: string;
+    marqueeTicker: string;
+  }> = {
+    'AI/Deep Tech': {
+      icon: <Cpu className="h-5 w-5 text-purple-400" />,
+      tagline: 'GPU Useful Life Stretching, Circular Venture Capital Loops & Unbilled Power Take-or-Pay Commitments',
+      criticalFlags: [
+        'AID-01: Circular Cloud Compute Revenue Cycles (ASC 606)',
+        'AID-06: GPU Cluster Depreciation Extension (3 vs 6 Yrs)',
+        'AID-14: Off-Balance Sheet Power Purchase Agreements'
+      ],
+      sampleFormula: 'Reported Server Useful Life / Industry 3-Yr Baseline > 1.33x',
+      secSource: '10-K Note: Property, Plant and Equipment Depreciation Schedules',
+      marqueeTicker: 'NVDA'
     },
     'SaaS': {
-      flags: ['Unbilled A/R vs Deferred Revenue Divergence', 'Sales Commission Capitalization Stretch', 'Net Revenue Retention Metric Jitter'],
-      formula: 'Δ(Unbilled Receivables) / Δ(Deferred Revenue) > 2.0σ',
-      secCitation: '10-K Note 3 — Revenue from Contracts with Customers (ASC 606)'
+      icon: <Cloud className="h-5 w-5 text-sky-400" />,
+      tagline: 'Deferred Revenue Decoupling, Capitalized Internal Software R&D & Sales Commission Amortization Stretch',
+      criticalFlags: [
+        'SAS-01: Deferred Revenue Growth vs GAAP Top-Line Lag',
+        'SAS-05: Capitalized Internal Software Development (ASC 350-40)',
+        'SAS-12: Deferred Commission Amortization Exceeding Churn Life'
+      ],
+      sampleFormula: 'Δ(Unbilled Contract Assets) / Δ(Deferred Revenue) > 2.0σ',
+      secSource: '10-K Note: Revenue from Contracts with Customers (ASC 606)',
+      marqueeTicker: 'MSFT'
+    },
+    'Tech Hardware': {
+      icon: <HardDrive className="h-5 w-5 text-emerald-400" />,
+      tagline: 'Foundry Take-or-Pay Wafer Liabilities, Channel Stuffing & Inventory Obsolescence NRV Underfunding',
+      criticalFlags: [
+        'HDW-02: Foundry Wafer Take-or-Pay Purchase Commitments',
+        'HDW-08: Channel Inventory Stuffing vs Distributor Returns',
+        'HDW-15: Assembly Tooling Useful Life Mismatch'
+      ],
+      sampleFormula: 'Unconditional Purchase Obligations / Operating Cash Flow > 1.4x',
+      secSource: '10-K Note: Commitments and Contingencies (Foundry Wafers)',
+      marqueeTicker: 'AAPL'
     },
     'Retail': {
-      flags: ['Phantom Inventory Buildup vs Shrink Reserve', 'Channel Stuffing via Vendor Rebate Accruals', 'Depreciation Life Extension on Store Fixtures'],
-      formula: 'DIO(TTM) - DIO(FY-1) > 18.0 days with Gross Margin contraction',
-      secCitation: '10-K Note 5 — Inventories, LIFO Reserves & Lower of Cost or Market'
-    },
-    'Payments': {
-      flags: ['Merchant Chargeback Reserve Inadequacy', 'Gross vs Net Settlement Volume Distortion', 'Restricted Cash Reclassification Gaming'],
-      formula: 'Provision for Transaction Losses / Gross Processing Volume < Historical 3-Yr Avg',
-      secCitation: '10-K Item 7 — Operating Results & Settlement Assets / Obligations'
+      icon: <ShoppingBag className="h-5 w-5 text-amber-400" />,
+      tagline: 'Days Inventory Outstanding (DIO) vs Sales Decoupling, Vendor Rebate Capitalization & Lease Burden',
+      criticalFlags: [
+        'RET-01: Revenue-to-Operating Cash Flow Decoupling',
+        'RET-04: Vendor Advertising Allowance Capitalization into Inventory',
+        'RET-18: Operating Lease Right-of-Use Asset Impairment Delay'
+      ],
+      sampleFormula: 'DIO(TTM) - DIO(FY-1) > 18.0 days with Gross Margin contraction',
+      secSource: '10-K Note: Merchandise Inventories & Valuation Reserves',
+      marqueeTicker: 'TSLA'
     },
     'Banks': {
-      flags: ['CECL Expected Credit Loss Model Smoothing', 'Held-to-Maturity Unrealized Bond Losses', 'Volatile Non-Interest Deposit Flight'],
-      formula: 'Allowance for Credit Losses / Total Non-Accrual Loans < 1.1x',
-      secCitation: '10-K Note 4 — Loans, Commitments & CECL Allowances (ASU 2016-13)'
+      icon: <Building className="h-5 w-5 text-blue-400" />,
+      tagline: 'CECL Credit Loss Reserve Underprovisioning, Level 3 Fair Value Discretion & HTM Unrealized Losses',
+      criticalFlags: [
+        'BNK-01: Current Expected Credit Loss (CECL) Reserve Adequacy',
+        'BNK-07: Held-to-Maturity (HTM) Bond Losses vs Tangible Common Equity',
+        'BNK-14: Illiquid Level 3 Fair Value Assets / Tier 1 Capital'
+      ],
+      sampleFormula: 'HTM Unrealized Losses / Tangible Common Equity > 35.0%',
+      secSource: '10-K Note: Investment Securities (Amortized Cost vs Fair Value)',
+      marqueeTicker: 'JPM'
+    },
+    'Payments': {
+      icon: <CreditCard className="h-5 w-5 text-indigo-400" />,
+      tagline: 'Customer Float Arbitrage Masking Take-Rate Decay, Settlement Float Lag & Chargeback Reserves',
+      criticalFlags: [
+        'PAY-02: Core Processing Take-Rate vs Float Interest Dependence',
+        'PAY-09: Merchant Chargeback Indemnification Reserve Underfunding',
+        'PAY-16: Settlement Assets Aging vs Acquiring Bank Congestion'
+      ],
+      sampleFormula: 'Merchant Loss Reserves / Total Processing Volume < 3-Yr Baseline',
+      secSource: '10-K Item 7: Operating Results & Settlement Obligations',
+      marqueeTicker: 'V'
     },
     'Healthcare': {
-      flags: ['Clinical Trial R&D Capitalization in Intangibles', 'Contractual Allowance Valuation Understatement', 'Off-Balance Sheet Royalty Monetization'],
-      formula: 'DSO > 75 days with Implicit Price Concessions < 2.5% of Gross Charges',
-      secCitation: '10-K Note 2 — Patient Service Revenue & Implicit Price Concessions'
-    },
-    'AI/Deep Tech': {
-      flags: ['Circular Cloud Compute Capacity Swaps', 'GPU Cluster Accelerated Depreciation Pacing', 'Related Party Training Data License Fees'],
-      formula: 'Capitalized GPU Server Useful Life > 4.5 Years vs Rapid Obsolescence',
-      secCitation: '10-K Note 1 — Property, Plant and Equipment Depreciation Schedules'
+      icon: <HeartPulse className="h-5 w-5 text-rose-400" />,
+      tagline: 'Implicit Price Concessions & Payer Denials, Clinical Milestone Capitalization & 340B Clawbacks',
+      criticalFlags: [
+        'HTH-01: Implicit Price Concessions & Denials Reserve Volatility',
+        'HTH-08: Clinical Trial In-Process R&D Milestone Capitalization',
+        'HTH-20: Unamortized Goodwill from Acquired Physician Practice Rollups'
+      ],
+      sampleFormula: 'DSO > 75 days with Implicit Price Concessions < 2.5% of Gross Charges',
+      secSource: '10-K Note: Patient Service Revenue & Variable Consideration',
+      marqueeTicker: 'PFE'
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-red-500 selection:text-white">
-      {/* Top Institutional Header */}
+      {/* 1. TOP INSTITUTIONAL HEADER */}
       <header className="border-b border-slate-800 bg-slate-950/95 backdrop-blur sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <Logo size="md" showSubtitle={true} />
 
           {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-7 text-xs text-slate-400 font-medium">
+          <nav className="hidden lg:flex items-center gap-7 text-xs text-slate-400 font-medium">
             <a href="#methodology" className="hover:text-white transition-colors">Forensic Models</a>
-            <a href="#taxonomy" className="hover:text-white transition-colors">30 Red Flags Taxonomy</a>
-            <a href="#dossiers" className="hover:text-white transition-colors">Forensic Dossiers</a>
-            <a href="#pipeline" className="hover:text-white transition-colors">Data Pipeline</a>
+            <a href="#lenses" className="hover:text-white transition-colors">7 Sector Lenses</a>
+            <a href="#dossiers" className="hover:text-white transition-colors">Audited Case Studies</a>
+            <a href="#pipeline" className="hover:text-white transition-colors">SEC EDGAR Pipeline</a>
             <button
               onClick={() => setIsPricingModalOpen(true)}
               className="text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1"
             >
               <Sparkles className="h-3 w-3 text-amber-400" />
-              <span>Pricing &amp; Plans</span>
+              <span>Institutional Pricing</span>
             </button>
           </nav>
 
@@ -195,24 +261,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               Create Account
             </button>
             <button
-              onClick={() => onNavigateToDashboard('AAPL')}
+              onClick={() => onNavigateToTerminal('AAPL', 'terminal')}
               className="flex items-center gap-1.5 px-4 py-1.5 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
             >
-              <span>Launch Terminal</span>
+              <span>Enter Forensic Terminal</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
       </header>
 
-      {/* Live Market & Regulatory Status Ribbon with Dynamic Yahoo Telemetry */}
+      {/* 2. REAL-TIME MARKET TELEMETRY & SEC PIPELINE STATUS RIBBON */}
       <div className="border-b border-slate-800/80 bg-slate-900/60 px-4 py-2 text-xs font-mono text-slate-400">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="text-white font-semibold">SEC EDGAR XBRL Pipeline Active</span>
+            <span className="text-white font-semibold">SEC EDGAR XBRL INGESTION ACTIVE</span>
             <span className="text-slate-600">|</span>
-            <span className="text-emerald-400 font-medium">Live Yahoo Finance Telemetry (Streaming)</span>
+            <span className="text-emerald-400 font-medium">Live Yahoo Finance Telemetry Stream</span>
           </div>
           <div className="flex items-center gap-4 text-[11px] text-slate-400 flex-wrap">
             {(['AAPL', 'NVDA', 'TSLA', 'MSFT', 'PLTR'] as const).map((tk) => {
@@ -224,7 +290,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               return (
                 <button
                   key={tk}
-                  onClick={() => onNavigateToDashboard(tk)}
+                  onClick={() => onNavigateToTerminal(tk, 'terminal')}
                   className="hover:text-white transition-colors cursor-pointer flex items-center gap-1 bg-slate-950/60 px-2 py-0.5 rounded border border-slate-800"
                   title={`Open ${tk} Forensic Audit Dossier`}
                 >
@@ -240,21 +306,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </div>
 
-      {/* Hero Section */}
-      <section className="relative pt-14 pb-20 px-4 border-b border-slate-800 overflow-hidden">
+      {/* 3. HERO COVER SECTION */}
+      <section className="relative pt-16 pb-20 px-4 border-b border-slate-800 overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900/50 to-slate-950">
         <div className="max-w-7xl mx-auto space-y-8">
-          <div className="max-w-3xl space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-500/10 border border-red-500/30 text-xs rounded-full text-red-400 font-medium">
+          <div className="max-w-3xl space-y-5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-500/10 border border-red-500/30 text-xs rounded-full text-red-400 font-medium font-mono">
               <ShieldAlert className="h-3.5 w-3.5" />
-              <span>Institutional Financial Forensics &amp; Forensic Accounting Intelligence</span>
+              <span>INSTITUTIONAL FORENSIC FINANCIAL INTELLIGENCE PLATFORM</span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight font-sans">
-              Detect Accounting Discrepancies, Earnings Manipulation &amp; Off-Balance Sheet Liabilities
+              Detect Accounting Irregularities, Earnings Manipulation &amp; Hidden Liabilities
             </h1>
 
-            <p className="text-base text-slate-300 leading-relaxed">
-              Empirical forensic accounting intelligence calibrated against <strong className="text-white">SEC EDGAR Form 10-K/10-Q XBRL ground truth</strong> and real-time equity market data. Automatically allocates across <strong className="text-white">30 specialized red flags</strong> tailored by industry lens.
+            <p className="text-base text-slate-300 leading-relaxed font-sans">
+              Autonomous forensic auditing engine calibrated against <strong className="text-white">SEC EDGAR Form 10-K/10-Q XBRL filings</strong> and real-time equity market data. Scrutinizes public companies across <strong className="text-white">30 specialized red flags per sector lens</strong>, Beneish M-Score, Altman Z-Score, and Sloan Accruals.
             </p>
           </div>
 
@@ -265,11 +331,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <Search className="h-4 w-4 text-red-400" />
                 <span>Search Any NYSE or NASDAQ Equity to Audit</span>
               </span>
-              <span className="text-[11px] font-mono text-slate-400">7,600+ Verified US Companies</span>
+              <span className="text-[11px] font-mono text-slate-400">7,600+ Verified US Equities</span>
             </div>
 
             <TickerSearch
-              onSelectCompany={(ticker) => onNavigateToDashboard(ticker)}
+              onSelectCompany={(ticker) => onNavigateToTerminal(ticker, 'terminal')}
               placeholder="Enter ticker symbol or company name (e.g. AAPL, NVDA, TSLA, MSFT)..."
               variant="hero"
             />
@@ -280,20 +346,240 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 {(['AAPL', 'NVDA', 'TSLA', 'MSFT', 'AMZN', 'GOOGL', 'PLTR'] as const).map((tk) => (
                   <button
                     key={tk}
-                    onClick={() => onNavigateToDashboard(tk)}
+                    onClick={() => onNavigateToTerminal(tk, 'terminal')}
                     className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-mono text-xs border border-slate-700 transition-colors cursor-pointer"
                   >
                     {tk}
                   </button>
                 ))}
               </div>
-              <span className="text-[11px] text-emerald-400 font-mono">✓ Real-time calculation proof</span>
+              <span className="text-[11px] text-emerald-400 font-mono">✓ Ground truth SEC XBRL proof</span>
+            </div>
+          </div>
+
+          {/* Interactive Quick Portal Links */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl pt-2">
+            <button
+              onClick={() => onNavigateToTerminal('AAPL', 'terminal')}
+              className="p-3 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl text-left transition-all cursor-pointer group"
+            >
+              <BarChart3 className="h-4 w-4 text-red-400 mb-1 group-hover:scale-110 transition-transform" />
+              <div className="text-xs font-bold text-white">Executive Terminal</div>
+              <div className="text-[10px] text-slate-400">Live price &amp; ratios</div>
+            </button>
+
+            <button
+              onClick={() => onNavigateToTerminal('NVDA', 'lenses', 'AI/Deep Tech')}
+              className="p-3 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl text-left transition-all cursor-pointer group"
+            >
+              <Layers className="h-4 w-4 text-purple-400 mb-1 group-hover:scale-110 transition-transform" />
+              <div className="text-xs font-bold text-white">7 Sector Lenses</div>
+              <div className="text-[10px] text-slate-400">Deep-dive sub-pages</div>
+            </button>
+
+            <button
+              onClick={() => onNavigateToTerminal('AAPL', 'matrix')}
+              className="p-3 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl text-left transition-all cursor-pointer group"
+            >
+              <ShieldAlert className="h-4 w-4 text-amber-400 mb-1 group-hover:scale-110 transition-transform" />
+              <div className="text-xs font-bold text-white">30 Red Flags</div>
+              <div className="text-[10px] text-slate-400">SEC audit matrix</div>
+            </button>
+
+            <button
+              onClick={() => onNavigateToTerminal('AAPL', 'simulator')}
+              className="p-3 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl text-left transition-all cursor-pointer group"
+            >
+              <Activity className="h-4 w-4 text-indigo-400 mb-1 group-hover:scale-110 transition-transform" />
+              <div className="text-xs font-bold text-white">Stress Simulator</div>
+              <div className="text-[10px] text-slate-400">Working capital shock</div>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. THE 7 SPECIALIZED INDUSTRY LENSES INTERACTIVE SHOWCASE */}
+      <section id="lenses" className="py-16 px-4 max-w-7xl mx-auto space-y-8 border-b border-slate-800">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="space-y-2 max-w-2xl">
+            <div className="text-xs font-mono uppercase tracking-wider text-red-400 font-semibold flex items-center gap-1.5">
+              <Layers className="h-3.5 w-3.5 text-purple-400" />
+              <span>Multi-Sector Audit Taxonomy</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white">
+              7 Specialized Industry Lenses with Dedicated Sub-Pages
+            </h2>
+            <p className="text-xs text-slate-400">
+              Generic financial models fail because SaaS metrics differ completely from commercial bank reserves or semiconductor fab commitments. Explore our 7 bespoke sector lenses:
+            </p>
+          </div>
+
+          <button
+            onClick={() => onNavigateToTerminal('AAPL', 'lenses')}
+            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors"
+          >
+            <span>Open All 7 Lens Sub-Pages</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        {/* Lens Tab Selector Pills */}
+        <div className="flex flex-wrap items-center gap-2 bg-slate-900/80 p-2 rounded-2xl border border-slate-800">
+          {(Object.keys(LENS_DETAILS) as IndustryLens[]).map((lens) => (
+            <button
+              key={lens}
+              onClick={() => setActiveLensTab(lens)}
+              className={`px-3.5 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-2 ${
+                activeLensTab === lens
+                  ? 'bg-red-600 text-white font-semibold shadow-sm'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              {LENS_DETAILS[lens].icon}
+              <span>{lens}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Active Lens Feature Spotlight Card */}
+        <div className="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-2xl shadow-xl space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-800">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400">
+                {LENS_DETAILS[activeLensTab].icon}
+              </div>
+              <div>
+                <span className="text-[11px] font-mono text-red-400 font-bold uppercase tracking-wider">
+                  Specialized Sector Sub-Page Portal
+                </span>
+                <h3 className="text-xl font-bold text-white">
+                  {activeLensTab} Forensic Accounting Lens
+                </h3>
+              </div>
+            </div>
+
+            <button
+              onClick={() => onNavigateToTerminal(LENS_DETAILS[activeLensTab].marqueeTicker, 'lenses', activeLensTab)}
+              className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer shadow-sm transition-all"
+            >
+              <span>Launch {activeLensTab} Dedicated Sub-Page</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <p className="text-sm text-slate-300 leading-relaxed font-sans">
+            {LENS_DETAILS[activeLensTab].tagline}
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {LENS_DETAILS[activeLensTab].criticalFlags.map((flag, idx) => (
+              <div key={idx} className="p-4 bg-slate-950 border border-slate-800 rounded-xl text-xs space-y-1.5">
+                <span className="text-red-400 font-mono font-bold text-[10px]">CRITICAL ANOMALY RULE</span>
+                <p className="text-slate-200 font-semibold">{flag}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 text-xs font-mono">
+            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800">
+              <span className="text-slate-400 text-[11px] block">Mathematical Detection Formula</span>
+              <code className="text-cyan-300 font-semibold block mt-1 text-xs">
+                {LENS_DETAILS[activeLensTab].sampleFormula}
+              </code>
+            </div>
+            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800">
+              <span className="text-slate-400 text-[11px] block">Governing SEC EDGAR Disclosure Target</span>
+              <span className="text-slate-200 block mt-1 text-xs font-sans font-medium">
+                {LENS_DETAILS[activeLensTab].secSource}
+              </span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Featured Forensic Dossiers Section */}
+      {/* 5. THE 4 EMPIRICAL FORENSIC VECTORS */}
+      <section id="methodology" className="py-16 px-4 max-w-7xl mx-auto space-y-8 border-b border-slate-800">
+        <div className="space-y-2 max-w-2xl">
+          <div className="text-xs font-mono uppercase tracking-wider text-red-400 font-semibold flex items-center gap-1.5">
+            <Scale className="h-3.5 w-3.5 text-amber-400" />
+            <span>Quantitative Accounting Ratios</span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-white">
+            The 4 Empirical Forensic Vectors
+          </h2>
+          <p className="text-xs text-slate-400">
+            Ground-truth mathematical proofs executed autonomously on every ticker from verified SEC 10-K balance sheets and income statements:
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-mono font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded">
+                VECTOR 1
+              </span>
+              <span className="text-[10px] font-mono text-slate-400">Threshold: &gt; -1.78</span>
+            </div>
+            <h3 className="text-base font-bold text-white">Beneish 8-Factor M-Score</h3>
+            <p className="text-xs text-slate-400 leading-relaxed font-sans">
+              Detects systematic financial earnings manipulation via 8 standardized variables (DSRI, GMI, AQI, SGI, DEPI, SGAI, LVGI, TATA).
+            </p>
+            <div className="pt-2 border-t border-slate-800 text-[11px] font-mono text-slate-300">
+              Calculates probability of retrospective earnings restatement.
+            </div>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-mono font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
+                VECTOR 2
+              </span>
+              <span className="text-[10px] font-mono text-slate-400">Threshold: &lt; 1.81</span>
+            </div>
+            <h3 className="text-base font-bold text-white">Altman Z-Score</h3>
+            <p className="text-xs text-slate-400 leading-relaxed font-sans">
+              Evaluates bankruptcy likelihood and structural credit distress across working capital, retained earnings, EBIT, market equity, and sales.
+            </p>
+            <div className="pt-2 border-t border-slate-800 text-[11px] font-mono text-slate-300">
+              Categorizes into Safe (&gt;2.99), Grey, or Distress Zone.
+            </div>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
+                VECTOR 3
+              </span>
+              <span className="text-[10px] font-mono text-slate-400">Threshold: &gt; 10.0%</span>
+            </div>
+            <h3 className="text-base font-bold text-white">Sloan Accrual Ratio</h3>
+            <p className="text-xs text-slate-400 leading-relaxed font-sans">
+              Measures divergence where reported net income surges while operating cash flow lags, revealing paper earnings vulnerable to reversal.
+            </p>
+            <div className="pt-2 border-t border-slate-800 text-[11px] font-mono text-slate-300">
+              Formula: (Net Income - OCF) / Total Assets.
+            </div>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-mono font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded">
+                VECTOR 4
+              </span>
+              <span className="text-[10px] font-mono text-slate-400">YoY Expansion</span>
+            </div>
+            <h3 className="text-base font-bold text-white">Working Capital DSO/DIO</h3>
+            <p className="text-xs text-slate-400 leading-relaxed font-sans">
+              Monitors Days Sales Outstanding (DSO) and Days Inventory Outstanding (DIO) expansion, flagging channel stuffing and unsellable stock buildup.
+            </p>
+            <div className="pt-2 border-t border-slate-800 text-[11px] font-mono text-slate-300">
+              Tracks cash conversion cycle decay across consecutive years.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. FEATURED FORENSIC AUDIT DOSSIERS */}
       <section id="dossiers" className="py-16 px-4 max-w-7xl mx-auto space-y-6 border-b border-slate-800">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="space-y-1">
@@ -304,11 +590,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               Featured Forensic Investigation Dossiers
             </h2>
             <p className="text-xs text-slate-400">
-              Select any verified equity to inspect its 30 Red Flags matrix, live stock chart, and mathematical ratios
+              Click any company to inspect its full 30 Red Flags matrix, live stock chart, and mathematical ratios
             </p>
           </div>
           <button
-            onClick={() => onNavigateToDashboard('AAPL')}
+            onClick={() => onNavigateToTerminal('AAPL', 'terminal')}
             className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 font-semibold cursor-pointer"
           >
             <span>Open Terminal Workspace</span>
@@ -320,12 +606,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {FEATURED_DOSSIERS.map((item) => (
             <div 
               key={item.ticker}
-              onClick={() => onNavigateToDashboard(item.ticker)}
-              className="bg-slate-900 border border-slate-800 hover:border-slate-700 p-5 rounded-xl space-y-4 transition-all hover:shadow-xl cursor-pointer group"
+              onClick={() => onNavigateToTerminal(item.ticker, 'terminal')}
+              className="bg-slate-900 border border-slate-800 hover:border-slate-700 p-5 rounded-2xl space-y-4 transition-all hover:shadow-xl cursor-pointer group"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center justify-center font-mono font-bold text-red-400 text-sm">
+                  <div className="h-10 w-10 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center font-mono font-bold text-red-400 text-sm">
                     {item.ticker}
                   </div>
                   <div>
@@ -348,202 +634,33 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     </div>
                   )}
                   <div className="text-xs font-bold text-slate-300">
-                    Score: {item.score}/100
+                    Health Score: <span className="text-emerald-400">{item.score}/100 ({item.grade})</span>
                   </div>
-                  <div className="text-[10px] text-emerald-400 font-medium">Grade {item.grade}</div>
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <h4 className="text-xs font-semibold text-slate-200">
-                  {item.title}
-                </h4>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  {item.summary}
-                </p>
+              <div>
+                <h4 className="text-xs font-semibold text-slate-200">{item.title}</h4>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">{item.summary}</p>
               </div>
 
-              {/* Forensic Metrics Strip */}
-              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-800 text-center text-xs">
-                <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
-                  <div className="text-slate-400 text-[10px]">Beneish M</div>
-                  <div className="font-mono font-bold text-emerald-400 mt-0.5">{item.mScore}</div>
+              <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs font-mono">
+                <div className="flex items-center gap-4 text-[11px]">
+                  <span>M-Score: <strong className="text-slate-200">{item.mScore}</strong></span>
+                  <span>Z-Score: <strong className="text-slate-200">{item.zScore}</strong></span>
+                  <span>Accrual: <strong className="text-slate-200">{item.accrual}</strong></span>
                 </div>
-                <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
-                  <div className="text-slate-400 text-[10px]">Altman Z</div>
-                  <div className="font-mono font-bold text-emerald-400 mt-0.5">{item.zScore}</div>
-                </div>
-                <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
-                  <div className="text-slate-400 text-[10px]">Sloan Accrual</div>
-                  <div className="font-mono font-bold text-emerald-400 mt-0.5">{item.accrual}</div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between text-xs pt-1 text-slate-400 group-hover:text-white font-medium">
-                <span>View Full Forensic Dossier</span>
-                <ArrowRight className="h-3.5 w-3.5 text-red-400" />
+                <span className="text-red-400 text-xs font-medium group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                  Audit <ArrowRight className="h-3 w-3" />
+                </span>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Forensic Accounting Methodologies Section */}
-      <section id="methodology" className="py-16 px-4 max-w-7xl mx-auto space-y-8 border-b border-slate-800">
-        <div className="max-w-3xl space-y-2">
-          <div className="text-xs font-mono uppercase tracking-wider text-red-400 font-semibold">
-            Mathematical Foundations
-          </div>
-          <h2 className="text-2xl font-bold text-white">
-            Core Empirical Forensic Accounting Engines
-          </h2>
-          <p className="text-xs text-slate-400">
-            Mathematically derived from audited balance sheets, income statements, and cash flows with transparent step-by-step calculation proofs
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-3">
-            <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 w-fit">
-              <Calculator className="h-5 w-5" />
-            </div>
-            <h3 className="text-sm font-semibold text-white">
-              Beneish 8-Factor M-Score
-            </h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Empirical probabilistic model developed by Messod Beneish detecting earnings manipulation through 8 indices: DSRI, GMI, AQI, SGI, DEPI, SGAI, TATA, and LVGI. Scores &gt; -1.78 breach the manipulation threshold.
-            </p>
-            <div className="pt-2 font-mono text-[11px] text-red-400">
-              Threshold: M &gt; -1.78 (Red Flag)
-            </div>
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-3">
-            <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 w-fit">
-              <Activity className="h-5 w-5" />
-            </div>
-            <h3 className="text-sm font-semibold text-white">
-              Sloan Accrual Anomaly
-            </h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Wharton Professor Richard Sloan&apos;s formula calculating (Net Income - Operating Cash Flow) / Total Assets. Identifies when reported P&amp;L accounting profit is unsupported by real cash flow collections.
-            </p>
-            <div className="pt-2 font-mono text-[11px] text-emerald-400">
-              Benchmark: Accrual Ratio ≤ +5.0%
-            </div>
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-3">
-            <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 w-fit">
-              <Scale className="h-5 w-5" />
-            </div>
-            <h3 className="text-sm font-semibold text-white">
-              Altman Z-Score Solvency
-            </h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Dr. Edward Altman&apos;s 5-factor multivariate credit-strength formula combining Working Capital, Retained Earnings, EBIT, Market Cap leverage, and Asset Turnover to classify distress risk across Safe, Grey, and Distress zones.
-            </p>
-            <div className="pt-2 font-mono text-[11px] text-cyan-400">
-              Safe Zone: Z &gt; 2.99
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 30 Red Flags Sector Matrix Exploration */}
-      <section id="taxonomy" className="py-16 px-4 max-w-7xl mx-auto space-y-6 border-b border-slate-800">
-        <div className="max-w-2xl space-y-2">
-          <div className="text-xs font-mono uppercase tracking-wider text-red-400 font-semibold">
-            Governing Taxonomy
-          </div>
-          <h2 className="text-2xl font-bold text-white">
-            30 Sector-Specific Red Flags Matrix
-          </h2>
-          <p className="text-xs text-slate-400">
-            Accounting red flags vary by business model. Retail scrutinizes inventory shrink and vendor allowances, while SaaS audits unbilled AR vs deferred revenue.
-          </p>
-        </div>
-
-        {/* Lens Pill Tabs */}
-        <div className="flex flex-wrap gap-2">
-          {(Object.keys(lensExamples) as IndustryLens[]).map((lens) => (
-            <button
-              key={lens}
-              onClick={() => setActiveLensTab(lens)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                activeLensTab === lens
-                  ? 'bg-red-600 text-white shadow-sm font-semibold'
-                  : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
-              }`}
-            >
-              {lens} (30 Flags)
-            </button>
-          ))}
-        </div>
-
-        {/* Lens Detail Card */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-            <h3 className="text-sm font-semibold text-white">
-              {activeLensTab} Forensic Inspection Standards
-            </h3>
-            <span className="text-xs text-slate-400 font-mono">
-              30 Specialized Rules
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {lensExamples[activeLensTab].flags.map((flag, idx) => (
-              <div key={idx} className="p-3 bg-slate-950 border border-slate-800 rounded-lg text-xs space-y-1">
-                <div className="text-red-400 font-semibold text-[11px] font-mono">FLAG #{idx + 1}</div>
-                <div className="text-slate-200 font-medium">{flag}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 text-xs">
-            <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-              <span className="text-slate-400 text-[11px] block">Sample Detection Formula</span>
-              <code className="font-mono text-xs text-slate-200 block mt-1">
-                {lensExamples[activeLensTab].formula}
-              </code>
-            </div>
-            <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-              <span className="text-slate-400 text-[11px] block">Governing SEC Citation</span>
-              <span className="font-sans text-xs text-slate-200 block mt-1">
-                {lensExamples[activeLensTab].secCitation}
-              </span>
-            </div>
-          </div>
-
-          <div className="pt-3 border-t border-slate-800 flex items-center justify-between flex-wrap gap-2">
-            <span className="text-xs text-slate-400">
-              Explore all 30 audited rules, peer benchmarks &amp; stress tests for this sector.
-            </span>
-            <button
-              onClick={() => {
-                const tickerMap: Record<IndustryLens, string> = {
-                  'AI/Deep Tech': 'NVDA',
-                  'SaaS': 'MSFT',
-                  'Tech Hardware': 'AAPL',
-                  'Retail': 'TSLA',
-                  'Banks': 'JPM',
-                  'Payments': 'V',
-                  'Healthcare': 'PFE'
-                };
-                onNavigateToDashboard(tickerMap[activeLensTab] || 'AAPL');
-              }}
-              className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-semibold flex items-center gap-2 cursor-pointer shadow-sm transition-all"
-            >
-              <span>Explore {activeLensTab} Sub-Page in Terminal</span>
-              <ArrowRight className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Data Ingestion Pipeline Architecture Section */}
-      <section id="pipeline" className="py-16 px-4 max-w-7xl mx-auto space-y-6">
+      {/* 7. DATA PIPELINE ARCHITECTURE */}
+      <section id="pipeline" className="py-16 px-4 max-w-7xl mx-auto space-y-6 border-b border-slate-800">
         <div className="max-w-2xl space-y-2">
           <div className="text-xs font-mono uppercase tracking-wider text-red-400 font-semibold">
             Data Collection Architecture
@@ -557,7 +674,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
-          <div className="p-5 bg-slate-900 border border-slate-800 rounded-xl space-y-2.5">
+          <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-2.5">
             <div className="text-emerald-400 font-mono font-bold text-xs">TIER 1 · SEC EDGAR XBRL</div>
             <h3 className="font-semibold text-white text-sm">Primary Accounting Ground Truth</h3>
             <p className="text-slate-400 leading-relaxed">
@@ -565,7 +682,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </p>
           </div>
 
-          <div className="p-5 bg-slate-900 border border-slate-800 rounded-xl space-y-2.5">
+          <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-2.5">
             <div className="text-cyan-400 font-mono font-bold text-xs">TIER 2 · YAHOO FINANCE LIVE</div>
             <h3 className="font-semibold text-white text-sm">Live Market Price Telemetry</h3>
             <p className="text-slate-400 leading-relaxed">
@@ -573,7 +690,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </p>
           </div>
 
-          <div className="p-5 bg-slate-900 border border-slate-800 rounded-xl space-y-2.5">
+          <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-2.5">
             <div className="text-red-400 font-mono font-bold text-xs">TIER 3 · FORENSIC ENGINE</div>
             <h3 className="font-semibold text-white text-sm">Mathematical Calculation Engine</h3>
             <p className="text-slate-400 leading-relaxed">
@@ -583,138 +700,57 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* SaaS Membership Tiers Section */}
-      <section id="pricing" className="py-16 px-4 max-w-7xl mx-auto space-y-8 border-b border-slate-800">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="space-y-2 max-w-2xl">
-            <div className="text-xs font-mono uppercase tracking-wider text-red-400 font-semibold flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-              <span>SaaS Subscriptions</span>
-            </div>
-            <h2 className="text-2xl font-bold text-white">
-              Institutional Forensics Plans for Every Research Scale
-            </h2>
-            <p className="text-xs text-slate-400">
-              Get full access to all 30 sector red flag algorithms, live SEC EDGAR XBRL ingestion, real-time Yahoo Finance price streams, and mathematical calculation proofs.
-            </p>
-          </div>
+      {/* 8. CALL TO ACTION BANNER */}
+      <section className="py-20 px-4 max-w-7xl mx-auto text-center space-y-6">
+        <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
+          Ready to Conduct Deep Forensic Audits on Public Equities?
+        </h2>
+        <p className="text-sm text-slate-400 max-w-2xl mx-auto">
+          Gain institutional clarity with 30 sector-governed red flags, audited SEC line-item tracing, and live stock market telemetry.
+        </p>
 
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
           <button
-            onClick={() => setIsPricingModalOpen(true)}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors"
+            onClick={() => onNavigateToTerminal('AAPL', 'terminal')}
+            className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl text-sm shadow-lg shadow-red-950/50 transition-all flex items-center gap-2 cursor-pointer"
           >
-            <span>Compare All Plan Details</span>
-            <ArrowRight className="h-3.5 w-3.5" />
+            <span>Launch Institutional Terminal</span>
+            <ArrowRight className="h-4 w-4" />
           </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* Plan 1 */}
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between space-y-5">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-mono text-slate-400">Individual License</span>
-              </div>
-              <h3 className="text-lg font-bold text-white">Forensic Analyst</h3>
-              <p className="text-xs text-slate-400">For equity research analysts, CPAs &amp; short-sellers.</p>
-              <div className="pt-2 font-mono">
-                <span className="text-3xl font-bold text-white">$159</span>
-                <span className="text-xs text-slate-400 font-sans"> / mo (billed annually)</span>
-              </div>
-              <div className="space-y-1.5 text-xs text-slate-300 pt-2 border-t border-slate-800">
-                <div className="flex items-center gap-2">✓ SEC EDGAR Form 10-K &amp; 10-Q XBRL Facts</div>
-                <div className="flex items-center gap-2">✓ Live Yahoo Finance Stock Streaming</div>
-                <div className="flex items-center gap-2">✓ Beneish M-Score &amp; Altman Z-Score Math Proofs</div>
-                <div className="flex items-center gap-2">✓ Up to 100 deep ticker audits / month</div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => onNavigateToDashboard('AAPL')}
-              className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
-            >
-              Start 14-Day Free Trial
-            </button>
-          </div>
-
-          {/* Plan 2: Most Popular */}
-          <div className="bg-slate-950 border-2 border-red-500 p-6 rounded-2xl flex flex-col justify-between space-y-5 relative shadow-xl shadow-red-950/20">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold font-mono tracking-wider uppercase">
-              Most Popular for Funds
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-mono text-red-400">Hedge Fund Core</span>
-              </div>
-              <h3 className="text-lg font-bold text-white">Hedge Fund Pro</h3>
-              <p className="text-xs text-slate-400">For Long/Short equity funds &amp; credit diligence teams.</p>
-              <div className="pt-2 font-mono">
-                <span className="text-3xl font-bold text-white">$399</span>
-                <span className="text-xs text-slate-400 font-sans"> / mo (billed annually)</span>
-              </div>
-              <div className="space-y-1.5 text-xs text-slate-300 pt-2 border-t border-slate-800">
-                <div className="flex items-center gap-2">✓ Unlimited Real-Time Ticker Audits</div>
-                <div className="flex items-center gap-2">✓ 30 Specialized Red Flags across 7 Lenses</div>
-                <div className="flex items-center gap-2">✓ High-Frequency 5-Second Price Ticks</div>
-                <div className="flex items-center gap-2">✓ Interactive Multi-Year Stress Test Simulator</div>
-                <div className="flex items-center gap-2">✓ Up to 5 Institutional Analyst Seats</div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => onNavigateToDashboard('AAPL')}
-              className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl text-xs transition-all shadow-md shadow-red-950/40 cursor-pointer"
-            >
-              Activate Institutional Trial
-            </button>
-          </div>
-
-          {/* Plan 3 */}
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between space-y-5">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-mono text-slate-400">Enterprise Scale</span>
-              </div>
-              <h3 className="text-lg font-bold text-white">Sovereign Institutional</h3>
-              <p className="text-xs text-slate-400">For asset managers, audit committees &amp; regulators.</p>
-              <div className="pt-2 font-mono">
-                <span className="text-3xl font-bold text-white">$799</span>
-                <span className="text-xs text-slate-400 font-sans"> / mo (billed annually)</span>
-              </div>
-              <div className="space-y-1.5 text-xs text-slate-300 pt-2 border-t border-slate-800">
-                <div className="flex items-center gap-2">✓ Everything in Hedge Fund Pro Included</div>
-                <div className="flex items-center gap-2">✓ Enterprise REST API with Bearer Key Access</div>
-                <div className="flex items-center gap-2">✓ Real-time Slack &amp; Teams Webhook Alerts</div>
-                <div className="flex items-center gap-2">✓ Custom Taxonomy Weighting &amp; Unlimited Seats</div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => onNavigateToDashboard('AAPL')}
-              className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
-            >
-              Contact Enterprise Sales
-            </button>
-          </div>
+          <button
+            onClick={onNavigateToSignup}
+            className="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white border border-slate-700 rounded-xl text-sm font-semibold transition-all cursor-pointer"
+          >
+            Create Institutional Account
+          </button>
         </div>
       </section>
 
-      {/* Institutional Pricing Modal */}
-      <PricingModal
-        isOpen={isPricingModalOpen}
-        onClose={() => setIsPricingModalOpen(false)}
-        onSelectPlan={(plan) => onNavigateToDashboard('AAPL')}
-      />
-
-      {/* Institutional Footer */}
-      <footer className="py-10 px-4 bg-slate-950 border-t border-slate-800 text-xs text-slate-400 font-sans">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <Logo size="sm" showSubtitle={true} />
-          <div className="text-center md:text-right text-xs text-slate-500">
-            SEC EDGAR XBRL Heuristics · 30 Red Flags Forensic Taxonomy · Live Yahoo Market Telemetry
+      {/* 9. FOOTER */}
+      <footer className="border-t border-slate-800/80 bg-slate-950 px-4 py-8 text-xs text-slate-500">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <Logo size="sm" showSubtitle={false} />
+          <div className="flex items-center gap-6">
+            <button onClick={() => onNavigateToTerminal('AAPL', 'terminal')} className="hover:text-slate-300">Terminal</button>
+            <button onClick={() => onNavigateToTerminal('AAPL', 'lenses')} className="hover:text-slate-300">7 Lenses</button>
+            <button onClick={() => onNavigateToTerminal('AAPL', 'matrix')} className="hover:text-slate-300">30 Flags</button>
+            <button onClick={onNavigateToLogin} className="hover:text-slate-300">Sign In</button>
+          </div>
+          <div>
+            © {new Date().getFullYear()} RedFlag Terminal. Autonomous Financial Forensics.
           </div>
         </div>
       </footer>
+
+      {/* Pricing Modal */}
+      <PricingModal
+        isOpen={isPricingModalOpen}
+        onClose={() => setIsPricingModalOpen(false)}
+        onSelectPlan={() => {
+          setIsPricingModalOpen(false);
+          onNavigateToSignup();
+        }}
+      />
     </div>
   );
 };

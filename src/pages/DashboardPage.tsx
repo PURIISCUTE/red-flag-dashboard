@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Header } from '../components/Header';
 import { ExecutiveSummary } from '../components/ExecutiveSummary';
 import { StockMarketChart } from '../components/StockMarketChart';
@@ -16,6 +16,7 @@ import { automaticallyAllocateIndustryLens, VALID_7_LENSES } from '../services/i
 import { recalculateCompanyProfileForensics } from '../services/forensicCalculations';
 import { CalculationTransparencyModal } from '../components/CalculationTransparencyModal';
 import { fetchLiveYahooQuote, LiveYahooQuote } from '../services/yahooFinanceService';
+import { TerminalNavbar, TerminalPage } from '../components/TerminalNavbar';
 import { 
   UserSession, 
   InvestigationItem, 
@@ -32,11 +33,15 @@ import {
   Table, 
   Activity, 
   FileCheck2, 
-  Layers,
-  Sparkles,
-  FileSpreadsheet,
-  Bot,
-  FileCheck
+  Layers, 
+  Sparkles, 
+  FileSpreadsheet, 
+  FileCheck,
+  Download,
+  Trash2,
+  Edit3,
+  ExternalLink,
+  Plus
 } from 'lucide-react';
 import { AuditGovernanceDossier } from '../components/AuditGovernanceDossier';
 import { LensSubPage } from '../components/LensSubPage';
@@ -48,22 +53,27 @@ import { PricingModal } from '../components/PricingModal';
 interface DashboardPageProps {
   currentTicker: string;
   onSelectTicker: (ticker: string) => void;
+  activeTerminalPage?: TerminalPage;
+  onNavigateTerminalPage?: (page: TerminalPage) => void;
+  initialLens?: IndustryLens;
   userSession: UserSession | null;
   onUpdateUserSession?: (session: UserSession) => void;
   onNavigateToLanding: () => void;
   onLogout: () => void;
 }
 
-type ActiveViewModule = 'overview' | 'lens_subpage' | 'audit' | 'flags' | 'financials' | 'simulator' | 'filings' | 'all';
-
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   currentTicker,
   onSelectTicker,
+  activeTerminalPage = 'terminal',
+  onNavigateTerminalPage,
+  initialLens,
   userSession,
   onUpdateUserSession,
   onNavigateToLanding,
   onLogout
 }) => {
+  const [internalPage, setInternalPage] = useState<TerminalPage>(activeTerminalPage);
   const [isPriorityModalOpen, setIsPriorityModalOpen] = useState<boolean>(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
   const [isLiveScanOpen, setIsLiveScanOpen] = useState<boolean>(false);
@@ -78,13 +88,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [lastScanTime, setLastScanTime] = useState<string>('Just now');
   const [liveQuote, setLiveQuote] = useState<LiveYahooQuote | null>(null);
   
-  // Interactive View Selector
-  const [activeModule, setActiveModule] = useState<ActiveViewModule>('overview');
-  const [isModuleDropdownOpen, setIsModuleDropdownOpen] = useState<boolean>(false);
+  // Note editing in investigation workspace
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingNoteText, setEditingNoteText] = useState<string>('');
 
-  // Active Industry Lens state (automatically allocated based on company sector)
-  const [selectedLens, setSelectedLens] = useState<IndustryLens | null>(null);
-  const [isProofModalOpen, setIsProofModalOpen] = useState<boolean>(false);
+  // Synchronize internal page with prop
+  useEffect(() => {
+    if (activeTerminalPage) {
+      setInternalPage(activeTerminalPage);
+    }
+  }, [activeTerminalPage]);
+
+  const handlePageNavigation = (page: TerminalPage) => {
+    setInternalPage(page);
+    if (onNavigateTerminalPage) {
+      onNavigateTerminalPage(page);
+    }
+  };
 
   // Base deterministic company profile
   const baseCompanyProfile = useMemo(() => {
@@ -93,15 +113,28 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     return getDeterministicCompanyProfile('AAPL')!;
   }, [currentTicker]);
 
-  // Automatically allocate industry lens based on sector context (No GPT)
-  React.useEffect(() => {
-    const auto = automaticallyAllocateIndustryLens(
+  // Active Industry Lens state (automatically allocated based on company sector)
+  const [selectedLens, setSelectedLens] = useState<IndustryLens>(() => {
+    return initialLens || automaticallyAllocateIndustryLens(
       baseCompanyProfile.ticker,
       baseCompanyProfile.name,
       baseCompanyProfile.sector
     );
-    setSelectedLens(auto);
-  }, [baseCompanyProfile.ticker, baseCompanyProfile.name, baseCompanyProfile.sector]);
+  });
+
+  // Automatically allocate industry lens based on sector context if not overridden
+  useEffect(() => {
+    if (initialLens) {
+      setSelectedLens(initialLens);
+    } else {
+      const auto = automaticallyAllocateIndustryLens(
+        baseCompanyProfile.ticker,
+        baseCompanyProfile.name,
+        baseCompanyProfile.sector
+      );
+      setSelectedLens(auto);
+    }
+  }, [baseCompanyProfile.ticker, baseCompanyProfile.name, baseCompanyProfile.sector, initialLens]);
 
   // Dynamically evaluated profile according to active industry lens and live Yahoo market telemetry
   const companyProfile = useMemo(() => {
@@ -129,7 +162,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   };
 
   // Synchronize live Yahoo Finance Telemetry continuously (5s polling for real-time fluctuations)
-  React.useEffect(() => {
+  useEffect(() => {
     let active = true;
 
     const pullLiveQuote = () => {
@@ -158,15 +191,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       }
     });
   };
-
-  // Automated welcome toast for logged-in user
-  React.useEffect(() => {
-    if (userSession?.email) {
-      setNotification(`Logged in as ${userSession.name} (${userSession.email}) • Active session.`);
-      const timer = setTimeout(() => setNotification(null), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [userSession?.email]);
 
   const handleSelectTickerWithToast = (ticker: string) => {
     const resolved = resolveQueryToTicker(ticker);
@@ -243,63 +267,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }, 250);
   };
 
-  // Module configuration for the interactive dropdown menu
-  const moduleList: { id: ActiveViewModule; label: string; icon: React.ReactNode; desc: string }[] = [
-    {
-      id: 'overview',
-      label: 'Executive Overview & Chart',
-      icon: <BarChart3 className="h-4 w-4 text-red-400" />,
-      desc: 'Health score, Altman Z, Beneish M-Score & stock price chart'
-    },
-    {
-      id: 'lens_subpage',
-      label: '7 Industry Lens Sub-Pages',
-      icon: <Layers className="h-4 w-4 text-purple-400" />,
-      desc: 'Dedicated in-depth sub-page for each of the 7 industry lenses with peer matrix & stress models'
-    },
-    {
-      id: 'audit',
-      label: 'Audit Dossier & Calculation Log',
-      icon: <FileCheck className="h-4 w-4 text-cyan-400" />,
-      desc: 'Governing sector specification, source manifest, calculation log & rerun triggers'
-    },
-    {
-      id: 'flags',
-      label: '30 Red Flags Forensic Matrix',
-      icon: <ShieldAlert className="h-4 w-4 text-amber-400" />,
-      desc: 'Sector-specific accounting red flags, formulas & audited citations'
-    },
-    {
-      id: 'financials',
-      label: 'Multi-Year Financials',
-      icon: <Table className="h-4 w-4 text-emerald-400" />,
-      desc: 'Audited balance sheets, cash flows & historical ratios'
-    },
-    {
-      id: 'simulator',
-      label: 'Stress Test Simulator',
-      icon: <Activity className="h-4 w-4 text-indigo-400" />,
-      desc: 'Interactive revenue shock & working capital stress tests'
-    },
-    {
-      id: 'filings',
-      label: 'SEC Filings & Auditor Logs',
-      icon: <FileCheck2 className="h-4 w-4 text-sky-400" />,
-      desc: 'SEC accession numbers, filing dates & auditor opinions'
-    },
-    {
-      id: 'all',
-      label: 'Consolidated View (All Sections)',
-      icon: <Layers className="h-4 w-4 text-purple-400" />,
-      desc: 'Display all modules together in a single page'
-    }
-  ];
-
-  const currentModuleItem = moduleList.find((m) => m.id === activeModule) || moduleList[0];
-
   return (
     <div className="min-h-screen flex flex-col font-sans selection:bg-red-500 selection:text-white bg-slate-950 text-slate-200">
-      {/* Top Application Header */}
+      {/* 1. TOP HEADER */}
       <Header
         currentCompany={companyProfile}
         liveQuote={liveQuote}
@@ -307,7 +277,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         onSelectCompany={handleSelectTickerWithToast}
         onOpenPriorityModal={() => setIsPriorityModalOpen(true)}
         onOpenLiveScan={() => setIsLiveScanOpen(true)}
-        onOpenInvestigationQueue={() => setIsInvestigationQueueOpen(true)}
+        onOpenInvestigationQueue={() => handlePageNavigation('queue')}
         onOpenProfileModal={() => setIsProfileModalOpen(true)}
         onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
         onOpenPricingModal={() => setIsPricingModalOpen(true)}
@@ -319,339 +289,463 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         onLogout={onLogout}
       />
 
-      {/* Main Terminal Workspace */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-5 space-y-5">
+      {/* 2. DEDICATED MULTI-PAGE TERMINAL NAVIGATION BAR */}
+      <TerminalNavbar
+        currentPage={internalPage}
+        onNavigate={handlePageNavigation}
+        currentCompany={companyProfile}
+        investigationCount={investigationItems.length}
+      />
+
+      {/* 3. MAIN WORKSPACE CONTAINER */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6 space-y-6">
         {/* Dynamic Notification Toast */}
         {notification && (
-          <div className="p-3 bg-slate-900/90 border border-emerald-500/40 text-xs font-sans text-emerald-400 flex items-center justify-between rounded-lg shadow-sm">
+          <div className="p-3 bg-slate-900/90 border border-emerald-500/40 text-xs font-sans text-emerald-400 flex items-center justify-between rounded-xl shadow-sm animate-fadeIn">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
               <span>{notification}</span>
             </div>
             <button
               onClick={() => setNotification(null)}
-              className="text-slate-500 hover:text-slate-300 text-xs ml-2"
+              className="text-slate-500 hover:text-slate-300 text-xs ml-2 cursor-pointer"
             >
               ✕
             </button>
           </div>
         )}
 
-        {/* Sector Forensic Taxonomy & Automatic Industry Allocation */}
-        <div className="bg-slate-900 border border-slate-800 p-3.5 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-sm">
-          <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400">
-              <ShieldAlert className="h-4 w-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">
-                  Governing Forensic Lens
-                </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-red-500/15 text-red-400 border border-red-500/30 font-semibold">
-                  {companyProfile.lens}
-                </span>
-                <span className="text-[11px] text-emerald-400 hidden sm:inline font-mono">
-                  ✓ Automatically allocated ({companyProfile.sector})
-                </span>
+        {/* ========================================================================= */}
+        {/* PAGE 1: EXECUTIVE TERMINAL OVERVIEW                                       */}
+        {/* ========================================================================= */}
+        {internalPage === 'terminal' && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Company Quick Profile Banner */}
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex flex-wrap items-center justify-between gap-5 shadow-sm">
+              <div className="flex items-center gap-3.5">
+                <div className="h-12 w-12 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center justify-center text-red-400 font-mono font-bold text-base">
+                  {companyProfile.ticker}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg font-bold text-white">
+                      {companyProfile.name}
+                    </h2>
+                    <span className="px-2 py-0.5 bg-slate-800 text-slate-300 text-[11px] rounded font-mono">
+                      CIK: {companyProfile.cik}
+                    </span>
+                    <span className="px-2 py-0.5 bg-red-500/10 text-red-400 border border-red-500/30 text-[11px] rounded font-mono font-semibold">
+                      {companyProfile.lens} Lens
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-400">
+                    <span>{companyProfile.sector}</span>
+                    <span>•</span>
+                    <span>Audited FY22–FY26 10-K &amp; TTM XBRL Feeds</span>
+                  </div>
+                </div>
               </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Every verified company is audited across 30 sector-specific Red Flags. Click any lens to audit alternate sector frameworks.
-              </p>
-            </div>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-1.5">
-            {VALID_7_LENSES.map((lens) => (
+              {/* Quick Metrics Strip */}
+              <div className="flex flex-wrap items-center gap-6 text-xs">
+                <div>
+                  <span className="text-slate-500 text-[11px] block">Live Stock Price</span>
+                  <span className="text-white font-bold font-mono text-base">
+                    ${(liveQuote?.regularMarketPrice ?? companyProfile.stockPrice).toFixed(2)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[11px] block">24h Change</span>
+                  <span
+                    className={`font-bold font-mono text-base ${
+                      (liveQuote?.regularMarketChangePercent ?? companyProfile.priceChangePercent) >= 0 ? 'text-emerald-400' : 'text-red-400'
+                    }`}
+                  >
+                    {(liveQuote?.regularMarketChangePercent ?? companyProfile.priceChangePercent) >= 0 ? '+' : ''}
+                    {(liveQuote?.regularMarketChangePercent ?? companyProfile.priceChangePercent).toFixed(2)}%
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[11px] block">Market Cap</span>
+                  <span className="text-slate-200 font-bold font-mono text-base">
+                    {liveQuote?.marketCap ? `$${liveQuote.marketCap}B` : `$${companyProfile.marketCap}B`}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[11px] block">Forensic Health</span>
+                  <span className="text-white font-bold font-mono text-base">
+                    {companyProfile.forensicScore}/100 ({companyProfile.scoreGrade})
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Executive Summary */}
+            <ExecutiveSummary company={companyProfile} />
+
+            {/* Interactive Stock Market Chart with Alternative Solutions */}
+            <StockMarketChart company={companyProfile} />
+
+            {/* Quick Action Navigation Strip to other pages */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
               <button
-                key={lens}
-                onClick={() => handleSelectIndustryLens(lens)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                  companyProfile.lens === lens
-                    ? 'bg-red-600 text-white shadow-sm font-semibold'
-                    : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
-                }`}
+                onClick={() => handlePageNavigation('lenses')}
+                className="p-4 bg-slate-900 hover:bg-slate-800/80 border border-slate-800 rounded-xl text-left transition-all cursor-pointer group space-y-1"
               >
-                {lens}
-              </button>
-            ))}
-
-            <button
-              onClick={() => setActiveModule('lens_subpage')}
-              className="ml-1 px-3 py-1 rounded-lg text-xs font-semibold bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 border border-purple-500/40 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-            >
-              <Layers className="h-3.5 w-3.5 text-purple-300" />
-              <span>Explore {companyProfile.lens} Sub-Page</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Company Quick Profile Bar */}
-        <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl flex flex-wrap items-center justify-between gap-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center justify-center text-red-400 font-mono font-bold text-sm">
-              {companyProfile.ticker}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-base font-semibold text-white">
-                  {companyProfile.name}
-                </span>
-                <span className="px-2 py-0.5 bg-slate-800 text-slate-300 text-[11px] rounded font-mono">
-                  CIK: {companyProfile.cik}
-                </span>
-                <span className="px-2 py-0.5 bg-red-500/10 text-red-400 text-[11px] rounded font-medium">
-                  {companyProfile.lens} Lens
-                </span>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <div className="flex items-center justify-between text-xs font-mono font-bold text-purple-400">
+                  <span>Explore {companyProfile.lens} Sub-Page</span>
+                  <Layers className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                </div>
                 <p className="text-xs text-slate-400">
-                  {companyProfile.sector} • FY22–FY26 Audited 10-K &amp; TTM Feeds
+                  Inspect sector peer benchmarks, formulas &amp; stress simulations.
                 </p>
-                <span className="text-slate-700 hidden sm:inline">•</span>
+              </button>
+
+              <button
+                onClick={() => handlePageNavigation('matrix')}
+                className="p-4 bg-slate-900 hover:bg-slate-800/80 border border-slate-800 rounded-xl text-left transition-all cursor-pointer group space-y-1"
+              >
+                <div className="flex items-center justify-between text-xs font-mono font-bold text-amber-400">
+                  <span>Audit 30 Red Flags Matrix</span>
+                  <ShieldAlert className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                </div>
+                <p className="text-xs text-slate-400">
+                  Review complete line-item disclosures and historical trends.
+                </p>
+              </button>
+
+              <button
+                onClick={() => handlePageNavigation('financials')}
+                className="p-4 bg-slate-900 hover:bg-slate-800/80 border border-slate-800 rounded-xl text-left transition-all cursor-pointer group space-y-1"
+              >
+                <div className="flex items-center justify-between text-xs font-mono font-bold text-emerald-400">
+                  <span>Multi-Year Financials</span>
+                  <Table className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                </div>
+                <p className="text-xs text-slate-400">
+                  Analyze audited balance sheets, cash flows &amp; working capital.
+                </p>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* PAGE 2: DEDICATED 7 INDUSTRY LENS SUB-PAGES                               */}
+        {/* ========================================================================= */}
+        {internalPage === 'lenses' && (
+          <div className="animate-fadeIn">
+            <LensSubPage
+              currentLens={companyProfile.lens}
+              company={companyProfile}
+              onSelectLens={(l) => handleSelectIndustryLens(l)}
+              onSelectCompany={(tk) => handleSelectTickerWithToast(tk)}
+              onToggleInvestigation={handleToggleInvestigation}
+              investigationCodes={investigationItems.map((i) => i.flagCode)}
+            />
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* PAGE 3: 30 RED FLAGS FORENSIC MATRIX                                      */}
+        {/* ========================================================================= */}
+        {internalPage === 'matrix' && (
+          <div className="space-y-4 animate-fadeIn">
+            <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <ShieldAlert className="h-5 w-5 text-amber-400" />
+                  <span>30 Red Flags Forensic Audit Matrix — {companyProfile.name} ({companyProfile.ticker})</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Full 30-rule forensic audit calibrated for the {companyProfile.lens} sector. Every flag references SEC EDGAR XBRL citations.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsInputSheetOpen(true)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-950/40 text-red-300 border border-red-500/30 flex items-center gap-1.5 cursor-pointer hover:bg-red-900/50"
+              >
+                <FileSpreadsheet className="h-3.5 w-3.5 text-red-400" />
+                <span>Input Sheet (27 Docs)</span>
+              </button>
+            </div>
+
+            <ForensicFlagMatrix
+              company={companyProfile}
+              investigationItems={investigationItems}
+              onToggleInvestigation={handleToggleInvestigation}
+              auditSensitivity="standard"
+            />
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* PAGE 4: MULTI-YEAR AUDITED FINANCIAL STATEMENTS                           */}
+        {/* ========================================================================= */}
+        {internalPage === 'financials' && (
+          <div className="space-y-4 animate-fadeIn">
+            <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <Table className="h-5 w-5 text-emerald-400" />
+                  <span>Multi-Year Audited Financial Statements — {companyProfile.name} ({companyProfile.ticker})</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  FY22 through FY26 + TTM audited Income Statement, Balance Sheet, Cash Flows, and Working Capital Ratios.
+                </p>
+              </div>
+              <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-lg">
+                Audited Ground Truth
+              </span>
+            </div>
+
+            <MultiYearFinancials company={companyProfile} />
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* PAGE 5: FORENSIC STRESS TEST & SCENARIO SIMULATOR                         */}
+        {/* ========================================================================= */}
+        {internalPage === 'simulator' && (
+          <div className="space-y-4 animate-fadeIn">
+            <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-indigo-400" />
+                  <span>Interactive Stress Test Simulator — {companyProfile.name} ({companyProfile.ticker})</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Simulate adverse accounting shocks (revenue restatements, inventory markdowns, bad debt spikes) and inspect health score re-evaluations.
+                </p>
+              </div>
+              <span className="text-xs font-mono text-indigo-400 bg-indigo-500/10 border border-indigo-500/30 px-2.5 py-1 rounded-lg">
+                Deterministic Model
+              </span>
+            </div>
+
+            <StressTestSimulator company={companyProfile} />
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* PAGE 6: SEC FILINGS & AUDITOR GROUND TRUTH                                */}
+        {/* ========================================================================= */}
+        {internalPage === 'filings' && (
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-5 animate-fadeIn">
+            <div className="flex flex-wrap items-center justify-between pb-4 border-b border-slate-800 gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <FileCheck2 className="h-5 w-5 text-sky-400" />
+                  <h2 className="text-base font-bold text-white">
+                    Audited SEC Filing Verifications &amp; Ground Truth Records
+                  </h2>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  SEC EDGAR accession numbers, periodic filing dates, independent auditor opinions, and Form 10-K/10-Q filings for CIK #{companyProfile.cik}.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setIsPriorityModalOpen(true)}
-                  className="text-[11px] text-amber-400/90 hover:text-amber-300 underline underline-offset-2 flex items-center gap-1 cursor-pointer"
-                  title="Click to view data sourcing architecture and live pipeline details"
+                  onClick={() => setIsLiveScanOpen(true)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1.5 cursor-pointer hover:bg-amber-500/25"
                 >
-                  <span>Data Sourcing: SEC EDGAR + Yahoo Finance API</span>
+                  <Zap className="h-3.5 w-3.5" />
+                  <span>Rescan SEC EDGAR</span>
                 </button>
               </div>
             </div>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-5 text-xs">
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-500 text-[11px] block">Stock Price</span>
-                {liveQuote?.isLiveNetwork && (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded text-[9px] font-mono">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    Live Yahoo
-                  </span>
-                )}
-              </div>
-              <span className="text-white font-semibold font-mono text-sm">
-                ${(liveQuote?.regularMarketPrice ?? companyProfile.stockPrice).toFixed(2)}
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-500 text-[11px] block">24h Change</span>
-              <span
-                className={`font-semibold font-mono text-sm ${
-                  (liveQuote?.regularMarketChangePercent ?? companyProfile.priceChangePercent) >= 0 ? 'text-emerald-400' : 'text-red-400'
-                }`}
-              >
-                {(liveQuote?.regularMarketChangePercent ?? companyProfile.priceChangePercent) >= 0 ? '+' : ''}
-                {(liveQuote?.regularMarketChangePercent ?? companyProfile.priceChangePercent)}%
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-500 text-[11px] block">Market Cap</span>
-              <span className="text-slate-300 font-semibold font-mono text-sm">
-                {liveQuote?.marketCap ? `$${liveQuote.marketCap}B` : `$${companyProfile.marketCap}B`}
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-500 text-[11px] block">Health Score</span>
-              <span className="text-white font-bold font-mono text-sm">
-                {companyProfile.forensicScore}/100 ({companyProfile.scoreGrade})
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Interactive "Go-Down" / Dropdown View Menu */}
-        <div className="bg-slate-900/90 border border-slate-800/80 p-2.5 rounded-xl flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-slate-400 ml-1">Active Section:</span>
-            
-            {/* The Dropdown Menu Button */}
-            <div className="relative">
-              <button
-                onClick={() => setIsModuleDropdownOpen(!isModuleDropdownOpen)}
-                className="flex items-center gap-2 px-3.5 py-1.5 bg-slate-800/90 hover:bg-slate-800 text-slate-100 rounded-lg border border-slate-700/80 font-medium text-xs shadow-sm transition-all"
-              >
-                {currentModuleItem.icon}
-                <span>{currentModuleItem.label}</span>
-                <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${isModuleDropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {/* The Dropdown Content */}
-              {isModuleDropdownOpen && (
-                <div className="absolute left-0 mt-2 w-72 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 p-1.5 space-y-1">
-                  <div className="px-2 py-1 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    Select Interactive Module
+            <div className="space-y-3">
+              {companyProfile.filingAuditLogs.map((log, idx) => (
+                <div
+                  key={idx}
+                  className="p-4 bg-slate-950 border border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono"
+                >
+                  <div className="space-y-1.5 font-sans">
+                    <div className="flex items-center gap-2 font-mono">
+                      <span className="px-2.5 py-0.5 bg-sky-500/10 text-sky-400 font-bold rounded text-xs border border-sky-500/30">
+                        Form {log.filingType}
+                      </span>
+                      <span className="text-white font-semibold">
+                        Period Ended: {log.periodEnd}
+                      </span>
+                      <span className="text-slate-600">|</span>
+                      <span className="text-slate-400">Filed: {log.filingDate}</span>
+                    </div>
+                    <div className="text-slate-400 font-mono text-[11px]">
+                      Accession Number: <span className="text-slate-200">{log.secAccessionNumber}</span>
+                    </div>
                   </div>
-                  {moduleList.map((mod) => (
-                    <button
-                      key={mod.id}
-                      onClick={() => {
-                        setActiveModule(mod.id);
-                        setIsModuleDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-2.5 py-2 rounded-lg flex items-start gap-2.5 transition-colors ${
-                        activeModule === mod.id
-                          ? 'bg-slate-800 text-white font-semibold'
-                          : 'text-slate-300 hover:bg-slate-800/60'
-                      }`}
-                    >
-                      <span className="mt-0.5">{mod.icon}</span>
-                      <div>
-                        <div className="text-xs">{mod.label}</div>
-                        <div className="text-[10px] text-slate-400">{mod.desc}</div>
-                      </div>
-                    </button>
-                  ))}
+
+                  <div className="sm:text-right space-y-1 font-sans">
+                    <div className="text-slate-200 font-semibold">{log.auditor}</div>
+                    <div className="text-emerald-400 text-xs font-medium flex items-center sm:justify-end gap-1">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      <span>{log.auditorOpinion}</span>
+                    </div>
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
           </div>
+        )}
 
-          {/* Quick Segment Tab Pills (for 1-click convenience) & Input Sheet Button */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            {moduleList.map((mod) => (
-              <button
-                key={mod.id}
-                onClick={() => setActiveModule(mod.id)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 ${
-                  activeModule === mod.id
-                    ? 'bg-red-500/15 text-red-400 border border-red-500/30'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-                }`}
-              >
-                {mod.icon}
-                <span className="hidden md:inline">{mod.label.split(' ')[0]}</span>
-              </button>
-            ))}
-
-            <div className="h-4 w-[1px] bg-slate-800 hidden sm:block mx-1"></div>
-
-            <button
-              onClick={() => setIsInputSheetOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-500/40 rounded-lg text-xs font-semibold transition-all shadow-sm"
-              title="Open SEC Source Document Registry & TTM Value Requirements"
-            >
-              <FileSpreadsheet className="h-3.5 w-3.5 text-red-400" />
-              <span>Input Sheet (27 Docs)</span>
-            </button>
-          </div>
-        </div>
-
-        {/* DYNAMIC SECTION RENDERING BASED ON ACTIVE SELECTION */}
-        <div className="space-y-6">
-          {/* 1. Overview & Stock Chart */}
-          {(activeModule === 'overview' || activeModule === 'all') && (
-            <div className="space-y-5 animate-fadeIn">
-              <ExecutiveSummary company={companyProfile} />
-              <StockMarketChart company={companyProfile} />
-            </div>
-          )}
-
-          {/* 1.25. Dedicated 7 Industry Lens Sub-Pages */}
-          {(activeModule === 'lens_subpage' || activeModule === 'all') && (
-            <div className="animate-fadeIn">
-              <LensSubPage
-                currentLens={companyProfile.lens}
-                company={companyProfile}
-                onSelectLens={(l) => handleSelectIndustryLens(l)}
-                onSelectCompany={(tk) => handleSelectTickerWithToast(tk)}
-                onToggleInvestigation={handleToggleInvestigation}
-                investigationCodes={investigationItems.map((i) => i.flagCode)}
-              />
-            </div>
-          )}
-
-          {/* 1.5. Audit Dossier, Manifest & Calculation Log */}
-          {(activeModule === 'audit' || activeModule === 'all') && (
-            <div className="animate-fadeIn">
-              <AuditGovernanceDossier company={companyProfile} />
-            </div>
-          )}
-
-          {/* 2. Complete 30-Red-Flag Matrix */}
-          {(activeModule === 'flags' || activeModule === 'all') && (
-            <div className="animate-fadeIn">
-              <ForensicFlagMatrix 
-                company={companyProfile} 
-                investigationItems={investigationItems}
-                onToggleInvestigation={handleToggleInvestigation}
-                auditSensitivity="standard"
-              />
-            </div>
-          )}
-
-          {/* 3. Multi-Year Audited Financial Statements */}
-          {(activeModule === 'financials' || activeModule === 'all') && (
-            <div className="animate-fadeIn">
-              <MultiYearFinancials company={companyProfile} />
-            </div>
-          )}
-
-          {/* 4. Interactive Stress Test & Scenario Simulator */}
-          {(activeModule === 'simulator' || activeModule === 'all') && (
-            <div className="animate-fadeIn">
-              <StressTestSimulator company={companyProfile} />
-            </div>
-          )}
-
-          {/* 5. SEC Filing Records & Auditor Log Detail */}
-          {(activeModule === 'filings' || activeModule === 'all') && (
-            <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-4 animate-fadeIn">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        {/* ========================================================================= */}
+        {/* PAGE 7: INVESTIGATION QUEUE & REPORT GENERATOR WORKSPACE                  */}
+        {/* ========================================================================= */}
+        {internalPage === 'queue' && (
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-6 animate-fadeIn">
+            <div className="flex flex-wrap items-center justify-between pb-4 border-b border-slate-800 gap-3">
+              <div>
                 <div className="flex items-center gap-2">
-                  <FileCheck2 className="h-5 w-5 text-sky-400" />
-                  <h3 className="font-semibold text-white text-sm">
-                    Audited SEC Filing Verifications &amp; Ground Truth Records
-                  </h3>
+                  <Bookmark className="h-5 w-5 text-rose-400" />
+                  <h2 className="text-base font-bold text-white">
+                    Forensic Investigation Queue Workspace
+                  </h2>
                 </div>
-                <span className="text-xs text-slate-400 font-mono">
-                  CIK #{companyProfile.cik}
-                </span>
+                <p className="text-xs text-slate-400 mt-1">
+                  Manage flagged accounting anomalies, attach investigator notes, and export professional audit dossiers.
+                </p>
               </div>
 
-              <div className="space-y-2.5">
-                {companyProfile.filingAuditLogs.map((log, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3.5 bg-slate-950/60 border border-slate-800/80 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+              <div className="flex items-center gap-2">
+                {investigationItems.length > 0 && (
+                  <button
+                    onClick={handleClearInvestigationQueue}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer flex items-center gap-1.5"
                   >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 font-mono">
-                        <span className="px-2 py-0.5 bg-sky-500/10 text-sky-400 font-semibold rounded">
-                          {log.filingType}
+                    <Trash2 className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Clear Queue</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={handleExportPdf}
+                  disabled={isExportingPdf}
+                  className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-500 text-white transition-all cursor-pointer flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>{isExportingPdf ? 'Exporting PDF...' : 'Download Full Audit Report (PDF)'}</span>
+                </button>
+              </div>
+            </div>
+
+            {investigationItems.length === 0 ? (
+              <div className="py-16 text-center space-y-3">
+                <Bookmark className="h-10 w-10 text-slate-600 mx-auto" />
+                <h3 className="text-sm font-bold text-slate-300">No flags in your investigation queue yet</h3>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  Browse the 30 Red Flags Matrix or any of the 7 Sector Lens sub-pages, then click &quot;Investigate&quot; to queue anomalies here for report generation.
+                </p>
+                <button
+                  onClick={() => handlePageNavigation('matrix')}
+                  className="mt-2 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-semibold inline-flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <span>Explore 30 Red Flags Matrix</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {investigationItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-slate-900 border border-slate-800 text-white">
+                          {item.flagCode}
                         </span>
-                        <span className="text-slate-200 font-semibold">
-                          Period Ended: {log.periodEnd}
+                        <span className="text-xs font-bold text-white">{item.flagTitle}</span>
+                        <span className="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded">
+                          {item.ticker} · {item.lens}
                         </span>
-                        <span className="text-slate-500">|</span>
-                        <span className="text-slate-400">Filed: {log.filingDate}</span>
                       </div>
-                      <div className="text-slate-400 font-mono text-[11px]">
-                        Accession: <span className="text-slate-300">{log.secAccessionNumber}</span>
+
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                          item.severity === 'Critical Anomaly'
+                            ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                            : item.severity === 'Warning'
+                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        }`}>
+                          {item.severity}
+                        </span>
+
+                        <button
+                          onClick={() => handleRemoveInvestigationItem(item.id)}
+                          className="text-slate-500 hover:text-red-400 transition-colors p-1 cursor-pointer"
+                          title="Remove from queue"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                     </div>
 
-                    <div className="sm:text-right space-y-1">
-                      <div className="text-slate-300 font-medium">{log.auditor}</div>
-                      <div className="text-emerald-400 text-[11px] font-medium flex items-center sm:justify-end gap-1">
-                        <CheckCircle2 className="h-3 w-3" />
-                        <span>{log.auditorOpinion}</span>
-                      </div>
+                    {/* Investigator Note */}
+                    <div className="pt-2 border-t border-slate-800/80">
+                      {editingItemId === item.id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            value={editingNoteText}
+                            onChange={(e) => setEditingNoteText(e.target.value)}
+                            placeholder="Add forensic notes or audit observations..."
+                            rows={2}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none focus:border-red-500"
+                          />
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => setEditingItemId(null)}
+                              className="px-2.5 py-1 text-xs text-slate-400 hover:text-white"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleUpdateInvestigationNote(item.id, editingNoteText);
+                                setEditingItemId(null);
+                              }}
+                              className="px-3 py-1 bg-red-600 hover:bg-red-500 text-white rounded text-xs font-semibold"
+                            >
+                              Save Note
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between text-xs text-slate-400">
+                          <p className="italic">
+                            {item.note || 'No notes attached. Click to add forensic commentary.'}
+                          </p>
+                          <button
+                            onClick={() => {
+                              setEditingItemId(item.id);
+                              setEditingNoteText(item.note || '');
+                            }}
+                            className="text-slate-500 hover:text-slate-300 flex items-center gap-1 text-[11px] cursor-pointer"
+                          >
+                            <Edit3 className="h-3 w-3" />
+                            <span>Edit Note</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </main>
 
-      {/* Modals & Drawers */}
+      {/* FOOTER */}
+      <Footer />
+
+      {/* MODALS */}
       <DataSourcePriorityModal
         isOpen={isPriorityModalOpen}
         onClose={() => setIsPriorityModalOpen(false)}
-        currentTicker={companyProfile.ticker}
       />
 
       <LiveSecScanModal
@@ -675,55 +769,39 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         onClose={() => setIsInputSheetOpen(false)}
       />
 
-      <ProfileModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-        userSession={userSession}
-        onUpdateUserSession={(updated) => {
-          if (onUpdateUserSession) {
-            onUpdateUserSession(updated);
-          }
-          setNotification(`Profile updated: ${updated.name}`);
-          setTimeout(() => setNotification(null), 3000);
-        }}
-      />
-
-      <CalculationTransparencyModal
-        isOpen={isProofModalOpen}
-        onClose={() => setIsProofModalOpen(false)}
-        company={companyProfile}
-      />
+      {userSession && (
+        <ProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          userSession={userSession}
+          onUpdateUserSession={(updated: UserSession) => {
+            if (onUpdateUserSession) onUpdateUserSession(updated);
+            setNotification('Analyst profile preferences updated.');
+            setTimeout(() => setNotification(null), 3000);
+          }}
+        />
+      )}
 
       <SaaSSettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
         userSession={userSession}
-        onUpdateUserSession={(updated) => {
-          if (onUpdateUserSession) {
-            onUpdateUserSession(updated);
-          }
-          setNotification(`Workspace settings saved.`);
-          setTimeout(() => setNotification(null), 3000);
+        onUpdateUserSession={(updated: UserSession) => {
+          if (onUpdateUserSession) onUpdateUserSession(updated);
         }}
         pollingIntervalMs={pollingIntervalMs}
-        onUpdatePollingInterval={(ms) => {
-          setPollingIntervalMs(ms);
-          setNotification(`Live telemetry polling rate updated to ${ms / 1000} seconds.`);
-          setTimeout(() => setNotification(null), 3000);
-        }}
+        onUpdatePollingInterval={(ms: number) => setPollingIntervalMs(ms)}
       />
 
       <PricingModal
         isOpen={isPricingModalOpen}
         onClose={() => setIsPricingModalOpen(false)}
-        onSelectPlan={(plan) => {
-          setNotification(`Activated 14-day institutional trial for ${plan}!`);
-          setTimeout(() => setNotification(null), 4000);
+        onSelectPlan={(planName: string) => {
+          setIsPricingModalOpen(false);
+          setNotification(`Upgraded to ${planName} Plan.`);
+          setTimeout(() => setNotification(null), 3500);
         }}
       />
-
-      {/* Toned Down, Clean Footer */}
-      <Footer />
     </div>
   );
 };
