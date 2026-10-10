@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ArrowRight, 
   CheckCircle2, 
@@ -29,7 +29,8 @@ import {
   Sliders,
   Check
 } from 'lucide-react';
-import { IndustryLens } from '../types';
+import { IndustryLens, CompanyForensicProfile, ForensicFlag } from '../types';
+import { getDeterministicCompanyProfile } from '../data/companyData';
 import { fetchLiveYahooQuote, LiveYahooQuote } from '../services/yahooFinanceService';
 import { Logo } from '../components/Logo';
 import { TickerSearch } from '../components/TickerSearch';
@@ -48,8 +49,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onNavigateToSignup
 }) => {
   const [activeLensTab, setActiveLensTab] = useState<IndustryLens>('AI/Deep Tech');
+  const [previewTicker, setPreviewTicker] = useState<string>('NVDA');
   const [ribbonQuotes, setRibbonQuotes] = useState<Record<string, LiveYahooQuote>>({});
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
+
+  // Active preview company profile for interactive teaser card
+  const previewProfile = useMemo<CompanyForensicProfile>(() => {
+    return getDeterministicCompanyProfile(previewTicker) || getDeterministicCompanyProfile('NVDA')!;
+  }, [previewTicker]);
 
   // Poll live market telemetry for marquee stocks every 5 seconds to match Yahoo Finance exactly
   useEffect(() => {
@@ -307,92 +314,204 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </div>
 
       {/* 3. HERO COVER SECTION */}
-      <section className="relative pt-16 pb-20 px-4 border-b border-slate-800 overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900/50 to-slate-950">
-        <div className="max-w-7xl mx-auto space-y-8">
-          <div className="max-w-3xl space-y-5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-500/10 border border-red-500/30 text-xs rounded-full text-red-400 font-medium font-mono">
-              <ShieldAlert className="h-3.5 w-3.5" />
-              <span>INSTITUTIONAL FORENSIC FINANCIAL INTELLIGENCE PLATFORM</span>
+      <section className="relative pt-14 pb-20 px-4 border-b border-slate-800 overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900/40 to-slate-950">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Column: Mission, Search & Navigation */}
+          <div className="lg:col-span-7 space-y-6">
+            <div className="space-y-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-500/10 border border-red-500/30 text-xs rounded-full text-red-400 font-medium font-mono">
+                <ShieldAlert className="h-3.5 w-3.5" />
+                <span>INSTITUTIONAL FORENSIC FINANCIAL INTELLIGENCE PLATFORM</span>
+              </div>
+
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight font-sans">
+                Detect Accounting Irregularities, Earnings Manipulation &amp; Hidden Liabilities
+              </h1>
+
+              <p className="text-sm sm:text-base text-slate-300 leading-relaxed font-sans">
+                Autonomous forensic auditing engine calibrated against <strong className="text-white">SEC EDGAR Form 10-K/10-Q XBRL filings</strong> and real-time equity market data. Scrutinizes public companies across <strong className="text-white">30 specialized red flags per sector lens</strong>, Beneish M-Score, Altman Z-Score, and Sloan Accruals.
+              </p>
             </div>
 
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight font-sans">
-              Detect Accounting Irregularities, Earnings Manipulation &amp; Hidden Liabilities
-            </h1>
+            {/* Central Ticker Investigation Search Box */}
+            <div className="bg-slate-900 border border-slate-700/80 p-4 rounded-2xl shadow-2xl space-y-3">
+              <div className="flex items-center justify-between text-xs font-semibold text-white">
+                <span className="flex items-center gap-2">
+                  <Search className="h-4 w-4 text-red-400" />
+                  <span>Search Any NYSE or NASDAQ Equity to Audit</span>
+                </span>
+                <span className="text-[11px] font-mono text-slate-400">7,600+ Verified US Equities</span>
+              </div>
 
-            <p className="text-base text-slate-300 leading-relaxed font-sans">
-              Autonomous forensic auditing engine calibrated against <strong className="text-white">SEC EDGAR Form 10-K/10-Q XBRL filings</strong> and real-time equity market data. Scrutinizes public companies across <strong className="text-white">30 specialized red flags per sector lens</strong>, Beneish M-Score, Altman Z-Score, and Sloan Accruals.
-            </p>
+              <TickerSearch
+                onSelectCompany={(ticker) => onNavigateToTerminal(ticker, 'terminal')}
+                placeholder="Enter ticker symbol or company name (e.g. AAPL, NVDA, TSLA, MSFT)..."
+                variant="hero"
+              />
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs text-slate-400 font-sans">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span>Interactive preview:</span>
+                  {(['NVDA', 'AAPL', 'MSFT', 'TSLA', 'PLTR'] as const).map((tk) => (
+                    <button
+                      key={tk}
+                      onClick={() => setPreviewTicker(tk)}
+                      className={`px-2.5 py-0.5 rounded font-mono text-xs border transition-colors cursor-pointer ${
+                        previewTicker === tk
+                          ? 'bg-red-600 text-white border-red-500 font-bold'
+                          : 'bg-slate-800 text-slate-300 hover:text-white border-slate-700'
+                      }`}
+                    >
+                      {tk}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-[11px] text-emerald-400 font-mono">✓ Ground truth SEC XBRL proof</span>
+              </div>
+            </div>
+
+            {/* Quick Action Portals */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+              <button
+                onClick={() => onNavigateToTerminal(previewTicker, 'terminal')}
+                className="p-3 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl text-left transition-all cursor-pointer group"
+              >
+                <BarChart3 className="h-4 w-4 text-red-400 mb-1 group-hover:scale-110 transition-transform" />
+                <div className="text-xs font-bold text-white">Executive Terminal</div>
+                <div className="text-[10px] text-slate-400">Live prices &amp; chart</div>
+              </button>
+
+              <button
+                onClick={() => onNavigateToTerminal(previewTicker, 'lenses', previewProfile.lens)}
+                className="p-3 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl text-left transition-all cursor-pointer group"
+              >
+                <Layers className="h-4 w-4 text-purple-400 mb-1 group-hover:scale-110 transition-transform" />
+                <div className="text-xs font-bold text-white">7 Sector Lenses</div>
+                <div className="text-[10px] text-slate-400">Dedicated sub-pages</div>
+              </button>
+
+              <button
+                onClick={() => onNavigateToTerminal(previewTicker, 'matrix')}
+                className="p-3 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl text-left transition-all cursor-pointer group"
+              >
+                <ShieldAlert className="h-4 w-4 text-amber-400 mb-1 group-hover:scale-110 transition-transform" />
+                <div className="text-xs font-bold text-white">30 Red Flags</div>
+                <div className="text-[10px] text-slate-400">SEC audit matrix</div>
+              </button>
+
+              <button
+                onClick={() => onNavigateToTerminal(previewTicker, 'simulator')}
+                className="p-3 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl text-left transition-all cursor-pointer group"
+              >
+                <Activity className="h-4 w-4 text-indigo-400 mb-1 group-hover:scale-110 transition-transform" />
+                <div className="text-xs font-bold text-white">Stress Simulator</div>
+                <div className="text-[10px] text-slate-400">Working capital shock</div>
+              </button>
+            </div>
           </div>
 
-          {/* Central Ticker Investigation Search Box */}
-          <div className="max-w-2xl bg-slate-900 border border-slate-700 p-4 rounded-2xl shadow-2xl space-y-3">
-            <div className="flex items-center justify-between text-xs font-semibold text-white">
-              <span className="flex items-center gap-2">
-                <Search className="h-4 w-4 text-red-400" />
-                <span>Search Any NYSE or NASDAQ Equity to Audit</span>
-              </span>
-              <span className="text-[11px] font-mono text-slate-400">7,600+ Verified US Equities</span>
+          {/* Right Column: Live Forensic Terminal Preview Snapshot Card */}
+          <div className="lg:col-span-5 bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center font-mono font-bold text-red-400 text-sm">
+                  {previewProfile.ticker}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-white text-sm">{previewProfile.name}</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
+                      CIK #{previewProfile.cik}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-400">
+                    {previewProfile.sector} · {previewProfile.lens} Lens
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Price Tag */}
+              <div className="text-right font-mono">
+                <div className="text-sm font-bold text-white flex items-center justify-end gap-1">
+                  <span>${(ribbonQuotes[previewProfile.ticker]?.regularMarketPrice ?? previewProfile.stockPrice).toFixed(2)}</span>
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                </div>
+                <div className={`text-[11px] font-semibold ${
+                  (ribbonQuotes[previewProfile.ticker]?.regularMarketChangePercent ?? previewProfile.priceChangePercent) >= 0 ? 'text-emerald-400' : 'text-red-400'
+                }`}>
+                  {(ribbonQuotes[previewProfile.ticker]?.regularMarketChangePercent ?? previewProfile.priceChangePercent) >= 0 ? '+' : ''}
+                  {(ribbonQuotes[previewProfile.ticker]?.regularMarketChangePercent ?? previewProfile.priceChangePercent).toFixed(2)}%
+                </div>
+              </div>
             </div>
 
-            <TickerSearch
-              onSelectCompany={(ticker) => onNavigateToTerminal(ticker, 'terminal')}
-              placeholder="Enter ticker symbol or company name (e.g. AAPL, NVDA, TSLA, MSFT)..."
-              variant="hero"
-            />
+            {/* Health Score & Primary Forensic Meters */}
+            <div className="grid grid-cols-2 gap-3 font-mono text-xs">
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                <span className="text-slate-500 text-[10px] block uppercase">Forensic Health</span>
+                <span className="text-base font-bold text-white">
+                  {previewProfile.forensicScore}/100 ({previewProfile.scoreGrade})
+                </span>
+                <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full ${previewProfile.forensicScore >= 80 ? 'bg-emerald-400' : previewProfile.forensicScore >= 70 ? 'bg-amber-400' : 'bg-red-400'}`}
+                    style={{ width: `${previewProfile.forensicScore}%` }}
+                  />
+                </div>
+              </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs text-slate-400 font-sans">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span>Instant dossiers:</span>
-                {(['AAPL', 'NVDA', 'TSLA', 'MSFT', 'AMZN', 'GOOGL', 'PLTR'] as const).map((tk) => (
-                  <button
-                    key={tk}
-                    onClick={() => onNavigateToTerminal(tk, 'terminal')}
-                    className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-mono text-xs border border-slate-700 transition-colors cursor-pointer"
-                  >
-                    {tk}
-                  </button>
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                <span className="text-slate-500 text-[10px] block uppercase">Beneish M-Score</span>
+                <span className={`text-base font-bold ${previewProfile.beneishMScore > -1.78 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                  {previewProfile.beneishMScore.toFixed(2)}
+                </span>
+                <span className="text-[10px] text-slate-500 block">Threshold: &gt; -1.78</span>
+              </div>
+
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                <span className="text-slate-500 text-[10px] block uppercase">Altman Z-Score</span>
+                <span className={`text-base font-bold ${previewProfile.altmanZScore > 2.99 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  {previewProfile.altmanZScore.toFixed(2)}
+                </span>
+                <span className="text-[10px] text-slate-500 block">Safe Zone &gt; 2.99</span>
+              </div>
+
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                <span className="text-slate-500 text-[10px] block uppercase">Sloan Accrual Ratio</span>
+                <span className="text-base font-bold text-white">
+                  {(previewProfile.sloanAccrualRatio * 100).toFixed(1)}%
+                </span>
+                <span className="text-[10px] text-slate-500 block">Warning &gt; +10%</span>
+              </div>
+            </div>
+
+            {/* Top Red Flags Spotlight for Preview Stock */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-mono text-slate-400 uppercase font-semibold block">
+                Audited Sector Red Flags ({previewProfile.flags.length} Checked):
+              </span>
+              <div className="space-y-1.5">
+                {previewProfile.flags.slice(0, 2).map((flag: ForensicFlag) => (
+                  <div key={flag.code} className="p-2.5 bg-slate-950/80 border border-slate-800 rounded-lg text-xs space-y-0.5 font-sans">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-red-400 font-bold text-[10px]">{flag.code} · {flag.category}</span>
+                      <span className={`text-[10px] font-mono font-semibold ${
+                        flag.status === 'Critical Anomaly' ? 'text-rose-400' : flag.status === 'Warning' ? 'text-amber-400' : 'text-emerald-400'
+                      }`}>{flag.status}</span>
+                    </div>
+                    <p className="text-slate-200 text-xs font-medium truncate">{flag.title}</p>
+                  </div>
                 ))}
               </div>
-              <span className="text-[11px] text-emerald-400 font-mono">✓ Ground truth SEC XBRL proof</span>
             </div>
-          </div>
 
-          {/* Interactive Quick Portal Links */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl pt-2">
+            {/* Action CTA */}
             <button
-              onClick={() => onNavigateToTerminal('AAPL', 'terminal')}
-              className="p-3 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl text-left transition-all cursor-pointer group"
+              onClick={() => onNavigateToTerminal(previewProfile.ticker, 'terminal')}
+              className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-red-950/40"
             >
-              <BarChart3 className="h-4 w-4 text-red-400 mb-1 group-hover:scale-110 transition-transform" />
-              <div className="text-xs font-bold text-white">Executive Terminal</div>
-              <div className="text-[10px] text-slate-400">Live price &amp; ratios</div>
-            </button>
-
-            <button
-              onClick={() => onNavigateToTerminal('NVDA', 'lenses', 'AI/Deep Tech')}
-              className="p-3 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl text-left transition-all cursor-pointer group"
-            >
-              <Layers className="h-4 w-4 text-purple-400 mb-1 group-hover:scale-110 transition-transform" />
-              <div className="text-xs font-bold text-white">7 Sector Lenses</div>
-              <div className="text-[10px] text-slate-400">Deep-dive sub-pages</div>
-            </button>
-
-            <button
-              onClick={() => onNavigateToTerminal('AAPL', 'matrix')}
-              className="p-3 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl text-left transition-all cursor-pointer group"
-            >
-              <ShieldAlert className="h-4 w-4 text-amber-400 mb-1 group-hover:scale-110 transition-transform" />
-              <div className="text-xs font-bold text-white">30 Red Flags</div>
-              <div className="text-[10px] text-slate-400">SEC audit matrix</div>
-            </button>
-
-            <button
-              onClick={() => onNavigateToTerminal('AAPL', 'simulator')}
-              className="p-3 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl text-left transition-all cursor-pointer group"
-            >
-              <Activity className="h-4 w-4 text-indigo-400 mb-1 group-hover:scale-110 transition-transform" />
-              <div className="text-xs font-bold text-white">Stress Simulator</div>
-              <div className="text-[10px] text-slate-400">Working capital shock</div>
+              <span>Audit {previewProfile.ticker} in Terminal Workspace</span>
+              <ArrowRight className="h-4 w-4" />
             </button>
           </div>
         </div>
